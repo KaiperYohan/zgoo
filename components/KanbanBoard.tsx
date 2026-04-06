@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { Company, Owner, Stage, STAGES, STAGE_LABELS, STAGE_COLORS } from '@/lib/types'
 import { DealCard } from './DealCard'
+import { AddCompanyModal } from './AddCompanyModal'
 import { createClient } from '@/lib/supabase/client'
 
 type CompanyWithOwner = Company & { owner?: Owner | null }
@@ -15,6 +16,7 @@ export function KanbanBoard({ initialCompanies }: KanbanBoardProps) {
   const [companies, setCompanies] = useState(initialCompanies)
   const [dragItem, setDragItem] = useState<string | null>(null)
   const [dragOverStage, setDragOverStage] = useState<Stage | null>(null)
+  const [addingToStage, setAddingToStage] = useState<Stage | null>(null)
   const dragCounter = useRef<Record<string, number>>({})
 
   const grouped = STAGES.reduce((acc, stage) => {
@@ -72,6 +74,7 @@ export function KanbanBoard({ initialCompanies }: KanbanBoardProps) {
   }
 
   return (
+    <>
     <div className="flex gap-3 h-full overflow-x-auto p-6">
       {STAGES.map(stage => (
         <div
@@ -85,11 +88,20 @@ export function KanbanBoard({ initialCompanies }: KanbanBoardProps) {
           onDrop={() => handleDrop(stage)}
         >
           {/* Column header */}
-          <div className="flex items-center gap-2 px-3 py-3">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STAGE_COLORS[stage]}`}>
-              {STAGE_LABELS[stage]}
-            </span>
-            <span className="text-xs text-slate-400 font-medium">{grouped[stage].length}</span>
+          <div className="flex items-center justify-between px-3 py-3">
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STAGE_COLORS[stage]}`}>
+                {STAGE_LABELS[stage]}
+              </span>
+              <span className="text-xs text-slate-400 font-medium">{grouped[stage].length}</span>
+            </div>
+            <button
+              onClick={() => setAddingToStage(stage)}
+              className="text-slate-400 hover:text-slate-700 text-lg leading-none"
+              title="Add company"
+            >
+              +
+            </button>
           </div>
 
           {/* Cards */}
@@ -108,5 +120,17 @@ export function KanbanBoard({ initialCompanies }: KanbanBoardProps) {
         </div>
       ))}
     </div>
+
+    {addingToStage && (
+      <AddCompanyModal
+        initialStage={addingToStage}
+        onClose={() => setAddingToStage(null)}
+        onAdded={(company) => {
+          setCompanies(prev => [{ ...company, owner: null }, ...prev])
+          setAddingToStage(null)
+        }}
+      />
+    )}
+    </>
   )
 }

@@ -7,9 +7,10 @@ import { createClient } from '@/lib/supabase/client'
 interface Props {
   onClose: () => void
   onAdded: (company: Company) => void
+  initialStage?: Stage
 }
 
-export function AddCompanyModal({ onClose, onAdded }: Props) {
+export function AddCompanyModal({ onClose, onAdded, initialStage = 'watchlist' }: Props) {
   const [form, setForm] = useState({
     name: '',
     industry: '',
@@ -18,7 +19,7 @@ export function AddCompanyModal({ onClose, onAdded }: Props) {
     ebitda_pct: '',
     employees: '',
     founded: '',
-    stage: 'watchlist' as Stage,
+    stage: initialStage,
   })
   const [saving, setSaving] = useState(false)
 
