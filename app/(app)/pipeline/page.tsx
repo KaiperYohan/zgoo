@@ -5,14 +5,18 @@ import Link from 'next/link'
 export default async function PipelinePage() {
   const supabase = await createClient()
 
+  // Exclude `pool` — that's the raw KODATA universe, 34k+ rows that would crash
+  // the kanban. Only surface curated stages here.
   const { data: companies } = await supabase
     .from('companies')
     .select('*')
+    .neq('stage', 'pool')
     .order('updated_at', { ascending: false })
 
-  const { data: owners } = await supabase
-    .from('owners')
-    .select('*')
+  const ids = (companies ?? []).map((c) => c.id)
+  const { data: owners } = ids.length
+    ? await supabase.from('owners').select('*').in('company_id', ids)
+    : { data: [] as Array<{ company_id: string }> }
 
   // Attach first owner to each company
   const companiesWithOwners = (companies || []).map(c => ({

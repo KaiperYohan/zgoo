@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Company, Owner, Stage, STAGES, STAGE_LABELS, STAGE_COLORS } from '@/lib/types'
+import { Company, Owner, Stage, PIPELINE_STAGES, STAGE_LABELS, STAGE_COLORS } from '@/lib/types'
 import { DealCard } from './DealCard'
 import { AddCompanyModal } from './AddCompanyModal'
 import { createClient } from '@/lib/supabase/client'
@@ -19,7 +19,7 @@ export function KanbanBoard({ initialCompanies }: KanbanBoardProps) {
   const [addingToStage, setAddingToStage] = useState<Stage | null>(null)
   const dragCounter = useRef<Record<string, number>>({})
 
-  const grouped = STAGES.reduce((acc, stage) => {
+  const grouped = PIPELINE_STAGES.reduce((acc, stage) => {
     acc[stage] = companies.filter(c => c.stage === stage)
     return acc
   }, {} as Record<Stage, CompanyWithOwner[]>)
@@ -76,7 +76,7 @@ export function KanbanBoard({ initialCompanies }: KanbanBoardProps) {
   return (
     <>
     <div className="flex gap-3 h-full overflow-x-auto p-6">
-      {STAGES.map(stage => (
+      {PIPELINE_STAGES.map(stage => (
         <div
           key={stage}
           className={`flex-shrink-0 w-72 flex flex-col rounded-xl transition-colors ${

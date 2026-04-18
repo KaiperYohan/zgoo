@@ -1,4 +1,5 @@
 export type Stage =
+  | 'pool'
   | 'watchlist'
   | 'contacted'
   | 'meeting'
@@ -8,6 +9,20 @@ export type Stage =
   | 'closed'
 
 export const STAGES: Stage[] = [
+  'pool',
+  'watchlist',
+  'contacted',
+  'meeting',
+  'nda',
+  'loi',
+  'dd',
+  'closed',
+]
+
+// Stages that actually show on the kanban pipeline board. `pool` is excluded —
+// it's the raw universe (34k+ companies) and only graduates to `watchlist` once
+// the user curates it from the companies page.
+export const PIPELINE_STAGES: Stage[] = [
   'watchlist',
   'contacted',
   'meeting',
@@ -18,6 +33,7 @@ export const STAGES: Stage[] = [
 ]
 
 export const STAGE_LABELS: Record<Stage, string> = {
+  pool: 'Pool',
   watchlist: 'Watchlist',
   contacted: 'Contacted',
   meeting: 'Meeting',
@@ -28,6 +44,7 @@ export const STAGE_LABELS: Record<Stage, string> = {
 }
 
 export const STAGE_COLORS: Record<Stage, string> = {
+  pool: 'bg-slate-50 text-slate-500',
   watchlist: 'bg-slate-100 text-slate-700',
   contacted: 'bg-blue-100 text-blue-700',
   meeting: 'bg-amber-100 text-amber-700',
@@ -49,6 +66,30 @@ export interface Company {
   stage: Stage
   created_at: string
   updated_at: string
+  corp_reg_no: string | null
+  biz_reg_no: string | null
+  address: string | null
+  ceo_name: string | null
+  phone: string | null
+  industry_code: string | null
+  cash_flow_grade: string | null
+  company_size: string | null
+  company_type: string | null
+  legal_form: string | null
+  settlement_date: string | null
+}
+
+// companies_enriched view: companies + derived columns for M&A screening.
+export interface CompanyEnriched extends Company {
+  rev_2025_thousand: number | null
+  rev_2024_thousand: number | null
+  rev_2023_thousand: number | null
+  op_2025_thousand: number | null
+  op_2024_thousand: number | null
+  op_2023_thousand: number | null
+  revenue_growth_pct: number | null
+  positive_ops_years: number | null
+  debt_ratio_latest: number | null
 }
 
 export interface Owner {
