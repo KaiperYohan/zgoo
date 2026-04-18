@@ -42,6 +42,27 @@ export function KanbanBoard({ initialCompanies }: KanbanBoardProps) {
     }
   }
 
+  const handleSendToPool = async (companyId: string) => {
+    const company = companies.find((c) => c.id === companyId)
+    if (!company) return
+    const prevStage = company.stage
+    // optimistic: remove from visible kanban (PIPELINE_STAGES excludes 'pool')
+    setCompanies((prev) =>
+      prev.map((c) => (c.id === companyId ? { ...c, stage: 'pool' as Stage } : c))
+    )
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('companies')
+      .update({ stage: 'pool', updated_at: new Date().toISOString() })
+      .eq('id', companyId)
+    if (error) {
+      // revert
+      setCompanies((prev) =>
+        prev.map((c) => (c.id === companyId ? { ...c, stage: prevStage } : c))
+      )
+    }
+  }
+
   const handleDrop = async (stage: Stage) => {
     dragCounter.current = {}
     setDragOverStage(null)
@@ -113,7 +134,11 @@ export function KanbanBoard({ initialCompanies }: KanbanBoardProps) {
                 onDragStart={e => handleDragStart(e, company.id)}
                 onDragEnd={() => { setDragItem(null); setDragOverStage(null); dragCounter.current = {} }}
               >
-                <DealCard company={company} dragging={dragItem === company.id} />
+                <DealCard
+                  company={company}
+                  dragging={dragItem === company.id}
+                  onSendToPool={handleSendToPool}
+                />
               </div>
             ))}
           </div>

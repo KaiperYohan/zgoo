@@ -7,18 +7,34 @@ import { formatKRW, formatPct } from '@/lib/format'
 interface DealCardProps {
   company: Company & { owner?: Owner | null }
   dragging?: boolean
+  onSendToPool?: (companyId: string) => void
 }
 
-export function DealCard({ company, dragging }: DealCardProps) {
+export function DealCard({ company, dragging, onSendToPool }: DealCardProps) {
   return (
     <Link
       href={`/company/${company.id}`}
       draggable={false}
-      className={`block bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
+      className={`group block bg-white rounded-lg border border-slate-200 p-3.5 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative ${
         dragging ? 'opacity-50 rotate-2 shadow-lg' : ''
       }`}
     >
-      <p className="text-sm font-semibold text-slate-900 truncate">{company.name}</p>
+      {onSendToPool && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onSendToPool(company.id)
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 text-[10px] text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded"
+          title="Pool로 돌려보내기"
+        >
+          ↩ Pool
+        </button>
+      )}
+      <p className="text-sm font-semibold text-slate-900 truncate pr-12">{company.name}</p>
       {company.industry && (
         <p className="text-xs text-slate-400 mt-0.5">{company.industry}</p>
       )}

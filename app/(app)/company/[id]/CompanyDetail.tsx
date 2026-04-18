@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Company, Owner, Activity, Note, Stage } from '@/lib/types'
 import { formatKRW, formatPct } from '@/lib/format'
+import { CF_GRADES } from '@/lib/filters'
 import { StageProgress } from '@/components/StageProgress'
 import { OwnerProfile } from '@/components/OwnerProfile'
 import { ActivityLog } from '@/components/ActivityLog'
@@ -19,7 +19,6 @@ interface Props {
 }
 
 export function CompanyDetail({ company: initialCompany, owner: initialOwner, activities, note }: Props) {
-  const router = useRouter()
   const [company, setCompany] = useState(initialCompany)
   const [owner, setOwner] = useState(initialOwner)
 
@@ -35,6 +34,18 @@ export function CompanyDetail({ company: initialCompany, owner: initialOwner, ac
     ebitda_pct: company.ebitda_pct?.toString() || '',
     employees: company.employees?.toString() || '',
     founded: company.founded?.toString() || '',
+  })
+
+  // Info edit (KODATA fields + basic contact)
+  const [editingInfo, setEditingInfo] = useState(false)
+  const [infoForm, setInfoForm] = useState({
+    ceo_name: company.ceo_name ?? '',
+    phone: company.phone ?? '',
+    address: company.address ?? '',
+    biz_reg_no: company.biz_reg_no ?? '',
+    cash_flow_grade: company.cash_flow_grade ?? '',
+    industry_code: company.industry_code ?? '',
+    company_size: company.company_size ?? '',
   })
 
   const handleStageChange = async (stage: Stage) => {
@@ -88,11 +99,28 @@ export function CompanyDetail({ company: initialCompany, owner: initialOwner, ac
     }
   }
 
-  const handleDelete = async () => {
-    if (!confirm('Delete this company and all related data?')) return
+  const handleInfoSave = async () => {
     const supabase = createClient()
-    await supabase.from('companies').delete().eq('id', company.id)
-    router.push('/pipeline')
+    const nullIfBlank = (s: string) => (s.trim() === '' ? null : s.trim())
+    const { data } = await supabase
+      .from('companies')
+      .update({
+        ceo_name: nullIfBlank(infoForm.ceo_name),
+        phone: nullIfBlank(infoForm.phone),
+        address: nullIfBlank(infoForm.address),
+        biz_reg_no: nullIfBlank(infoForm.biz_reg_no),
+        cash_flow_grade: nullIfBlank(infoForm.cash_flow_grade),
+        industry_code: nullIfBlank(infoForm.industry_code),
+        company_size: nullIfBlank(infoForm.company_size),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', company.id)
+      .select()
+      .single()
+    if (data) {
+      setCompany(data)
+      setEditingInfo(false)
+    }
   }
 
   return (
@@ -151,12 +179,6 @@ export function CompanyDetail({ company: initialCompany, owner: initialOwner, ac
           </div>
         )}
 
-        <button
-          onClick={handleDelete}
-          className="text-xs text-slate-400 hover:text-red-500 transition-colors mt-1"
-        >
-          Delete
-        </button>
       </div>
 
       {/* Stage progress */}
@@ -222,6 +244,110 @@ export function CompanyDetail({ company: initialCompany, owner: initialOwner, ac
         )}
       </div>
 
+      {/* Company Info */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-slate-900">Company Info</h3>
+          {editingInfo ? (
+            <div className="flex gap-2">
+              <button
+                onClick={handleInfoSave}
+                className="text-xs px-3 py-1 bg-slate-900 text-white rounded-md hover:bg-slate-800"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  setEditingInfo(false)
+                  setInfoForm({
+                    ceo_name: company.ceo_name ?? '',
+                    phone: company.phone ?? '',
+                    address: company.address ?? '',
+                    biz_reg_no: company.biz_reg_no ?? '',
+                    cash_flow_grade: company.cash_flow_grade ?? '',
+                    industry_code: company.industry_code ?? '',
+                    company_size: company.company_size ?? '',
+                  })
+                }}
+                className="text-xs text-slate-500 hover:text-slate-700"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setEditingInfo(true)}
+              className="text-xs text-slate-400 hover:text-slate-600"
+            >
+              Edit
+            </button>
+          )}
+        </div>
+
+        {editingInfo ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <InfoInput
+              label="대표자 (CEO)"
+              value={infoForm.ceo_name}
+              onChange={(v) => setInfoForm({ ...infoForm, ceo_name: v })}
+            />
+            <InfoInput
+              label="전화번호"
+              value={infoForm.phone}
+              onChange={(v) => setInfoForm({ ...infoForm, phone: v })}
+            />
+            <div className="md:col-span-2">
+              <InfoInput
+                label="주소"
+                value={infoForm.address}
+                onChange={(v) => setInfoForm({ ...infoForm, address: v })}
+              />
+            </div>
+            <InfoInput
+              label="사업자번호"
+              value={infoForm.biz_reg_no}
+              onChange={(v) => setInfoForm({ ...infoForm, biz_reg_no: v })}
+            />
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">현금흐름등급</label>
+              <select
+                value={infoForm.cash_flow_grade}
+                onChange={(e) => setInfoForm({ ...infoForm, cash_flow_grade: e.target.value })}
+                className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">—</option>
+                {CF_GRADES.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+            <InfoInput
+              label="업종코드"
+              value={infoForm.industry_code}
+              onChange={(v) => setInfoForm({ ...infoForm, industry_code: v })}
+            />
+            <InfoInput
+              label="기업규모"
+              value={infoForm.company_size}
+              onChange={(v) => setInfoForm({ ...infoForm, company_size: v })}
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <InfoRow label="대표자" value={company.ceo_name} />
+            <InfoRow label="전화번호" value={company.phone} />
+            <div className="md:col-span-2">
+              <InfoRow label="주소" value={company.address} />
+            </div>
+            <InfoRow label="법인번호" value={company.corp_reg_no} muted />
+            <InfoRow label="사업자번호" value={company.biz_reg_no} />
+            <InfoRow label="현금흐름등급" value={company.cash_flow_grade} />
+            <InfoRow label="업종코드" value={company.industry_code} />
+            <InfoRow label="기업규모" value={company.company_size} />
+          </div>
+        )}
+      </div>
+
       {/* Two column: Owner + Notes */}
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -246,6 +372,37 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div>
       <span className="text-xs text-slate-400">{label}</span>
       <p className="text-lg font-semibold text-slate-900">{value}</p>
+    </div>
+  )
+}
+
+function InfoRow({ label, value, muted }: { label: string; value: string | null | undefined; muted?: boolean }) {
+  return (
+    <div className="flex gap-2">
+      <span className="text-xs text-slate-400 w-24 shrink-0 pt-0.5">{label}</span>
+      <span className={muted ? 'text-slate-400' : 'text-slate-700'}>{value || '-'}</span>
+    </div>
+  )
+}
+
+function InfoInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div>
+      <label className="block text-xs text-slate-500 mb-1">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-2.5 py-1.5 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
     </div>
   )
 }
