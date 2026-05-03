@@ -14,10 +14,11 @@ import {
 import { formatKRW, formatPct } from '@/lib/format'
 import { regionFromAddress } from '@/lib/filters'
 import { AddCompanyModal } from '@/components/AddCompanyModal'
+import { WatchlistButton } from '@/components/WatchlistButton'
 import { FiltersPanel, FilterState } from './FiltersPanel'
 import { NLSearchBar } from './NLSearchBar'
 
-type CompanyWithOwner = CompanyEnriched & { owner?: Owner | null }
+type CompanyWithOwner = CompanyEnriched & { owner?: Owner | null; watched?: boolean }
 type SortKey =
   | 'name'
   | 'revenue_krw'
@@ -336,6 +337,7 @@ export function CompaniesTable({
         <table className="w-full">
           <thead className="bg-slate-50 sticky top-0 z-[1]">
             <tr>
+              <th className="px-2 py-3 w-8" />
               <SortHeader label="Company" field="name" />
               <th className="text-left text-xs font-medium text-slate-500 px-3 py-3 whitespace-nowrap">
                 Region
@@ -359,6 +361,13 @@ export function CompaniesTable({
               const subtitle = [c.industry, c.ceo_name || c.owner?.name].filter(Boolean).join(' · ')
               return (
                 <tr key={c.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                  <td className="px-2 py-3 w-8 text-center">
+                    <WatchlistButton
+                      companyId={c.id}
+                      initialWatched={!!c.watched}
+                      variant="icon"
+                    />
+                  </td>
                   <td className="px-3 py-3">
                     <Link
                       href={`/company/${c.id}`}

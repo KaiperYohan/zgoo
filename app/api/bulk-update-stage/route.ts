@@ -68,5 +68,23 @@ export async function POST(req: Request) {
     updated += chunk.length
   }
 
+  // Promoting companies onto the kanban also adds them to the calling user's
+  // personal watchlist — the kanban is the union of every user's watchlist,
+  // so anything that lands there must be owned by someone.
+  if (toStage !== 'pool') {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      for (let i = 0; i < ids.length; i += UPDATE_CHUNK) {
+        const chunk = ids.slice(i, i + UPDATE_CHUNK)
+        await supabase
+          .from('user_watchlist')
+          .upsert(
+            chunk.map((id) => ({ user_id: user.id, company_id: id })),
+            { onConflict: 'user_id,company_id', ignoreDuplicates: true }
+          )
+      }
+    }
+  }
+
   return NextResponse.json({ count: ids.length, updated })
 }

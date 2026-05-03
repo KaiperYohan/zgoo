@@ -14,6 +14,8 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
 
   if (!company) notFound()
 
+  const { data: { user } } = await supabase.auth.getUser()
+
   const { data: owners } = await supabase
     .from('owners')
     .select('*')
@@ -33,12 +35,24 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
     .order('updated_at', { ascending: false })
     .limit(1)
 
+  let watched = false
+  if (user) {
+    const { data: w } = await supabase
+      .from('user_watchlist')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .eq('company_id', id)
+      .maybeSingle()
+    watched = !!w
+  }
+
   return (
     <CompanyDetail
       company={company}
       owner={owners?.[0] || null}
       activities={activities || []}
       note={notes?.[0] || null}
+      initialWatched={watched}
     />
   )
 }

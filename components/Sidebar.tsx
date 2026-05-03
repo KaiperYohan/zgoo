@@ -5,14 +5,26 @@ import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
-const NAV = [
-  { href: '/pipeline', label: 'Pipeline', icon: PipelineIcon },
-  { href: '/companies', label: 'Companies', icon: CompaniesIcon },
-]
-
-export function Sidebar({ userEmail }: { userEmail: string }) {
+export function Sidebar({
+  userId,
+  userEmail,
+  isAdmin,
+}: {
+  userId: string
+  userEmail: string
+  isAdmin: boolean
+}) {
   const pathname = usePathname()
   const router = useRouter()
+
+  const nav = [
+    { href: '/pipeline', label: 'Pipeline', icon: PipelineIcon },
+    { href: '/companies', label: 'Companies', icon: CompaniesIcon },
+    { href: `/users/${userId}`, label: 'My page', icon: UserIcon },
+  ]
+  if (isAdmin) {
+    nav.push({ href: '/admin', label: 'Admin', icon: ShieldIcon })
+  }
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -28,8 +40,10 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
       </div>
 
       <nav className="flex-1 p-3 space-y-0.5">
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const active = pathname.startsWith(href)
+        {nav.map(({ href, label, icon: Icon }) => {
+          const active = href === `/users/${userId}`
+            ? pathname === href || pathname.startsWith('/users/')
+            : pathname.startsWith(href)
           return (
             <Link
               key={href}
@@ -50,6 +64,9 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
       <div className="p-3 border-t border-slate-100">
         <div className="px-3 py-2">
           <p className="text-xs text-slate-500 truncate">{userEmail}</p>
+          {isAdmin && (
+            <p className="text-[10px] text-violet-600 font-medium mt-0.5 uppercase tracking-wider">Admin</p>
+          )}
           <button
             onClick={handleLogout}
             className="text-xs text-slate-400 hover:text-red-600 mt-1 transition-colors"
@@ -74,6 +91,22 @@ function CompaniesIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    </svg>
+  )
+}
+
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  )
+}
+
+function ShieldIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
     </svg>
   )
 }

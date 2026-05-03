@@ -67,9 +67,21 @@ export default async function CompaniesPage({
     }
   }
 
+  const { data: { user } } = await supabase.auth.getUser()
+  const watchedIds = new Set<string>()
+  if (user && ids.length) {
+    const { data: w } = await supabase
+      .from('user_watchlist')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .in('company_id', ids)
+    for (const row of w ?? []) watchedIds.add(row.company_id)
+  }
+
   const rows = (companies ?? []).map((c: CompanyEnriched) => ({
     ...c,
     owner: ownerByCompany.get(c.id) ?? null,
+    watched: watchedIds.has(c.id),
   }))
 
   return (

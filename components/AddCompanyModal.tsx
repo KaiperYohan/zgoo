@@ -45,6 +45,16 @@ export function AddCompanyModal({ onClose, onAdded, initialStage = 'watchlist' }
       .single()
 
     if (data && !error) {
+      // A newly created company that lands on the kanban must be tied to the
+      // creator's personal watchlist — kanban = union of personal watchlists.
+      if (data.stage !== 'pool') {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await supabase
+            .from('user_watchlist')
+            .insert({ user_id: user.id, company_id: data.id })
+        }
+      }
       onAdded(data)
     }
     setSaving(false)

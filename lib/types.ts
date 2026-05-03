@@ -121,3 +121,24 @@ export interface Note {
   body: string
   updated_at: string
 }
+
+export type AppUserStatus = 'pending' | 'approved' | 'rejected'
+export type AppUserRole = 'member' | 'admin'
+
+export interface AppUser {
+  id: string
+  email: string
+  display_name: string | null
+  status: AppUserStatus
+  role: AppUserRole
+  created_at: string
+  approved_at: string | null
+  approved_by: string | null
+}
+
+export interface WatchlistEntry {
+  user_id: string
+  company_id: string
+  created_at: string
+}
+

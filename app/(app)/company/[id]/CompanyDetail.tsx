@@ -9,6 +9,7 @@ import { StageProgress } from '@/components/StageProgress'
 import { OwnerProfile } from '@/components/OwnerProfile'
 import { ActivityLog } from '@/components/ActivityLog'
 import { CompanyNotes } from '@/components/CompanyNotes'
+import { WatchlistButton } from '@/components/WatchlistButton'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -16,9 +17,10 @@ interface Props {
   owner: Owner | null
   activities: Activity[]
   note: Note | null
+  initialWatched: boolean
 }
 
-export function CompanyDetail({ company: initialCompany, owner: initialOwner, activities, note }: Props) {
+export function CompanyDetail({ company: initialCompany, owner: initialOwner, activities, note, initialWatched }: Props) {
   const [company, setCompany] = useState(initialCompany)
   const [owner, setOwner] = useState(initialOwner)
 
@@ -179,6 +181,7 @@ export function CompanyDetail({ company: initialCompany, owner: initialOwner, ac
           </div>
         )}
 
+        <WatchlistButton companyId={company.id} initialWatched={initialWatched} />
       </div>
 
       {/* Stage progress */}
