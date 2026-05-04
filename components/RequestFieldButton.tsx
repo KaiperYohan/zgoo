@@ -6,11 +6,12 @@ import type { FieldKey } from '@/lib/fieldRequests'
 
 interface Props {
   companyId: string
+  ownerId?: string
   fieldKey: FieldKey
   initialPending: boolean
 }
 
-export function RequestFieldButton({ companyId, fieldKey, initialPending }: Props) {
+export function RequestFieldButton({ companyId, ownerId, fieldKey, initialPending }: Props) {
   const router = useRouter()
   const [pending, setPending] = useState(initialPending)
   const [busy, setBusy] = useState(false)
@@ -31,7 +32,7 @@ export function RequestFieldButton({ companyId, fieldKey, initialPending }: Prop
       const res = await fetch('/api/field-request', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ companyId, fieldKey }),
+        body: JSON.stringify({ companyId, ownerId, fieldKey }),
       })
       if (res.ok) {
         setPending(true)

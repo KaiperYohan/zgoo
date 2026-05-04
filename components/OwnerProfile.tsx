@@ -3,14 +3,18 @@
 import { useState } from 'react'
 import { Owner } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { RequestFieldButton } from '@/components/RequestFieldButton'
+import { FieldKey } from '@/lib/fieldRequests'
 
 interface OwnerProfileProps {
   companyId: string
   owner: Owner | null
   onUpdate: (owner: Owner) => void
+  pendingOwnerFields?: string[]
 }
 
-export function OwnerProfile({ companyId, owner, onUpdate }: OwnerProfileProps) {
+export function OwnerProfile({ companyId, owner, onUpdate, pendingOwnerFields = [] }: OwnerProfileProps) {
+  const pendingSet = new Set(pendingOwnerFields)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({
     name: owner?.name || '',
@@ -136,6 +140,25 @@ export function OwnerProfile({ companyId, owner, onUpdate }: OwnerProfileProps) 
     )
   }
 
+  const ownerId = owner!.id
+  const renderField = (label: string, value: string | number | null | undefined, fieldKey: FieldKey) => (
+    <div>
+      <span className="text-slate-400 text-xs">{label}</span>
+      {value !== null && value !== undefined && value !== '' ? (
+        <p className="text-slate-900">{value}</p>
+      ) : (
+        <div className="mt-1">
+          <RequestFieldButton
+            companyId={companyId}
+            ownerId={ownerId}
+            fieldKey={fieldKey}
+            initialPending={pendingSet.has(fieldKey)}
+          />
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <div>
       <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
@@ -143,31 +166,40 @@ export function OwnerProfile({ companyId, owner, onUpdate }: OwnerProfileProps) 
           <span className="text-slate-400 text-xs">Name</span>
           <p className="text-slate-900 font-medium">{owner!.name}</p>
         </div>
-        <div>
-          <span className="text-slate-400 text-xs">Age</span>
-          <p className="text-slate-900">{owner!.age || '-'}</p>
-        </div>
-        <div>
-          <span className="text-slate-400 text-xs">Phone</span>
-          <p className="text-slate-900">{owner!.phone || '-'}</p>
-        </div>
-        <div>
-          <span className="text-slate-400 text-xs">Email</span>
-          <p className="text-slate-900">{owner!.email || '-'}</p>
-        </div>
+        {renderField('Age', owner!.age, 'owner_age')}
+        {renderField('Phone', owner!.phone, 'owner_phone')}
+        {renderField('Email', owner!.email, 'owner_email')}
       </div>
-      {owner!.background && (
-        <div className="mt-3 text-sm">
-          <span className="text-slate-400 text-xs">Background</span>
+      <div className="mt-3 text-sm">
+        <span className="text-slate-400 text-xs">Background</span>
+        {owner!.background ? (
           <p className="text-slate-700 whitespace-pre-wrap">{owner!.background}</p>
-        </div>
-      )}
-      {owner!.relationship && (
-        <div className="mt-2 text-sm">
-          <span className="text-slate-400 text-xs">Relationship</span>
+        ) : (
+          <div className="mt-1">
+            <RequestFieldButton
+              companyId={companyId}
+              ownerId={ownerId}
+              fieldKey="owner_background"
+              initialPending={pendingSet.has('owner_background')}
+            />
+          </div>
+        )}
+      </div>
+      <div className="mt-2 text-sm">
+        <span className="text-slate-400 text-xs">Relationship</span>
+        {owner!.relationship ? (
           <p className="text-slate-700 whitespace-pre-wrap">{owner!.relationship}</p>
-        </div>
-      )}
+        ) : (
+          <div className="mt-1">
+            <RequestFieldButton
+              companyId={companyId}
+              ownerId={ownerId}
+              fieldKey="owner_relationship"
+              initialPending={pendingSet.has('owner_relationship')}
+            />
+          </div>
+        )}
+      </div>
       <button
         onClick={() => setEditing(true)}
         className="mt-3 text-xs text-blue-600 hover:text-blue-700"

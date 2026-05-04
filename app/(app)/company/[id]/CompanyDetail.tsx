@@ -21,9 +21,10 @@ interface Props {
   note: Note | null
   initialWatched: boolean
   pendingFields: string[]
+  pendingOwnerFields: string[]
 }
 
-export function CompanyDetail({ company: initialCompany, owner: initialOwner, activities, note, initialWatched, pendingFields }: Props) {
+export function CompanyDetail({ company: initialCompany, owner: initialOwner, activities, note, initialWatched, pendingFields, pendingOwnerFields }: Props) {
   const pendingSet = new Set(pendingFields)
   const [company, setCompany] = useState(initialCompany)
   const [owner, setOwner] = useState(initialOwner)
@@ -404,7 +405,12 @@ export function CompanyDetail({ company: initialCompany, owner: initialOwner, ac
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <h3 className="text-sm font-semibold text-slate-900 mb-3">Owner</h3>
-          <OwnerProfile companyId={company.id} owner={owner} onUpdate={setOwner} />
+          <OwnerProfile
+            companyId={company.id}
+            owner={owner}
+            onUpdate={setOwner}
+            pendingOwnerFields={pendingOwnerFields}
+          />
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <CompanyNotes companyId={company.id} initialNote={note} />

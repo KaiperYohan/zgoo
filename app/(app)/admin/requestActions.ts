@@ -19,14 +19,14 @@ async function requireAdmin() {
   return { supabase, adminId: user.id }
 }
 
-// Admin types in the value the requester was missing. We write it onto the
-// company row and mark the request fulfilled in one go.
+// Admin types in the value the requester was missing. We write it to the
+// underlying row (companies or owners) and mark the request fulfilled.
 export async function fulfillFieldRequest(requestId: string, rawValue: string) {
   const { supabase, adminId } = await requireAdmin()
 
   const { data: req } = await supabase
     .from('field_requests')
-    .select('id, company_id, field_key, status')
+    .select('id, company_id, owner_id, field_key, status')
     .eq('id', requestId)
     .maybeSingle()
 
@@ -51,11 +51,20 @@ export async function fulfillFieldRequest(requestId: string, rawValue: string) {
     parsed = trimmed
   }
 
-  const { error: updateErr } = await supabase
-    .from('companies')
-    .update({ [spec.column]: parsed, updated_at: new Date().toISOString() })
-    .eq('id', req.company_id)
-  if (updateErr) throw new Error(updateErr.message)
+  if (spec.entity === 'owner') {
+    if (!req.owner_id) throw new Error('Owner request missing owner_id')
+    const { error } = await supabase
+      .from('owners')
+      .update({ [spec.column]: parsed })
+      .eq('id', req.owner_id)
+    if (error) throw new Error(error.message)
+  } else {
+    const { error } = await supabase
+      .from('companies')
+      .update({ [spec.column]: parsed, updated_at: new Date().toISOString() })
+      .eq('id', req.company_id)
+    if (error) throw new Error(error.message)
+  }
 
   const { error: reqErr } = await supabase
     .from('field_requests')

@@ -48,11 +48,23 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
 
   const { data: pendingReqs } = await supabase
     .from('field_requests')
-    .select('field_key')
+    .select('field_key, owner_id')
     .eq('company_id', id)
     .eq('status', 'pending')
 
-  const pendingFields = new Set<string>((pendingReqs ?? []).map((r) => r.field_key))
+  // Split into company-scoped vs. owner-scoped pending fields. The same
+  // field_key (e.g. 'phone' vs. 'owner_phone') is unambiguous, but we still
+  // want to filter owner-pending entries to the actual owner being shown.
+  const pendingFields = new Set<string>()
+  const pendingOwnerFields = new Set<string>()
+  const ownerId = owners?.[0]?.id
+  for (const r of pendingReqs ?? []) {
+    if (r.owner_id == null) {
+      pendingFields.add(r.field_key)
+    } else if (ownerId && r.owner_id === ownerId) {
+      pendingOwnerFields.add(r.field_key)
+    }
+  }
 
   return (
     <CompanyDetail
@@ -62,6 +74,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
       note={notes?.[0] || null}
       initialWatched={watched}
       pendingFields={Array.from(pendingFields)}
+      pendingOwnerFields={Array.from(pendingOwnerFields)}
     />
   )
 }
