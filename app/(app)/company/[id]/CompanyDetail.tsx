@@ -10,6 +10,8 @@ import { OwnerProfile } from '@/components/OwnerProfile'
 import { ActivityLog } from '@/components/ActivityLog'
 import { CompanyNotes } from '@/components/CompanyNotes'
 import { WatchlistButton } from '@/components/WatchlistButton'
+import { RequestFieldButton } from '@/components/RequestFieldButton'
+import { FieldKey } from '@/lib/fieldRequests'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -18,9 +20,11 @@ interface Props {
   activities: Activity[]
   note: Note | null
   initialWatched: boolean
+  pendingFields: string[]
 }
 
-export function CompanyDetail({ company: initialCompany, owner: initialOwner, activities, note, initialWatched }: Props) {
+export function CompanyDetail({ company: initialCompany, owner: initialOwner, activities, note, initialWatched, pendingFields }: Props) {
+  const pendingSet = new Set(pendingFields)
   const [company, setCompany] = useState(initialCompany)
   const [owner, setOwner] = useState(initialOwner)
 
@@ -169,7 +173,17 @@ export function CompanyDetail({ company: initialCompany, owner: initialOwner, ac
           <div className="group flex items-start gap-2">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">{company.name}</h1>
-              {company.industry && <p className="text-sm text-slate-500 mt-0.5">{company.industry}</p>}
+              {company.industry ? (
+                <p className="text-sm text-slate-500 mt-0.5">{company.industry}</p>
+              ) : (
+                <div className="mt-1">
+                  <RequestFieldButton
+                    companyId={company.id}
+                    fieldKey="industry"
+                    initialPending={pendingSet.has('industry')}
+                  />
+                </div>
+              )}
             </div>
             <button
               onClick={() => setEditingHeader(true)}
@@ -238,11 +252,46 @@ export function CompanyDetail({ company: initialCompany, owner: initialOwner, ac
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Stat label="Revenue" value={formatKRW(company.revenue_krw)} />
-            <Stat label="FCF" value={formatKRW(company.fcf_krw)} />
-            <Stat label="EBITDA" value={formatPct(company.ebitda_pct)} />
-            <Stat label="Employees" value={company.employees?.toLocaleString() || '-'} />
-            <Stat label="Founded" value={company.founded?.toString() || '-'} />
+            <FinStat
+              label="Revenue"
+              hasValue={company.revenue_krw !== null}
+              displayValue={formatKRW(company.revenue_krw)}
+              fieldKey="revenue_krw"
+              companyId={company.id}
+              pendingSet={pendingSet}
+            />
+            <FinStat
+              label="FCF"
+              hasValue={company.fcf_krw !== null}
+              displayValue={formatKRW(company.fcf_krw)}
+              fieldKey="fcf_krw"
+              companyId={company.id}
+              pendingSet={pendingSet}
+            />
+            <FinStat
+              label="EBITDA"
+              hasValue={company.ebitda_pct !== null}
+              displayValue={formatPct(company.ebitda_pct)}
+              fieldKey="ebitda_pct"
+              companyId={company.id}
+              pendingSet={pendingSet}
+            />
+            <FinStat
+              label="Employees"
+              hasValue={company.employees !== null}
+              displayValue={company.employees?.toLocaleString() ?? ''}
+              fieldKey="employees"
+              companyId={company.id}
+              pendingSet={pendingSet}
+            />
+            <FinStat
+              label="Founded"
+              hasValue={company.founded !== null}
+              displayValue={company.founded?.toString() ?? ''}
+              fieldKey="founded"
+              companyId={company.id}
+              pendingSet={pendingSet}
+            />
           </div>
         )}
       </div>
@@ -337,16 +386,16 @@ export function CompanyDetail({ company: initialCompany, owner: initialOwner, ac
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <InfoRow label="대표자" value={company.ceo_name} />
-            <InfoRow label="전화번호" value={company.phone} />
+            <InfoRow label="대표자" value={company.ceo_name} fieldKey="ceo_name" companyId={company.id} pendingSet={pendingSet} />
+            <InfoRow label="전화번호" value={company.phone} fieldKey="phone" companyId={company.id} pendingSet={pendingSet} />
             <div className="md:col-span-2">
-              <InfoRow label="주소" value={company.address} />
+              <InfoRow label="주소" value={company.address} fieldKey="address" companyId={company.id} pendingSet={pendingSet} />
             </div>
             <InfoRow label="법인번호" value={company.corp_reg_no} muted />
-            <InfoRow label="사업자번호" value={company.biz_reg_no} />
-            <InfoRow label="현금흐름등급" value={company.cash_flow_grade} />
-            <InfoRow label="업종코드" value={company.industry_code} />
-            <InfoRow label="기업규모" value={company.company_size} />
+            <InfoRow label="사업자번호" value={company.biz_reg_no} fieldKey="biz_reg_no" companyId={company.id} pendingSet={pendingSet} />
+            <InfoRow label="현금흐름등급" value={company.cash_flow_grade} fieldKey="cash_flow_grade" companyId={company.id} pendingSet={pendingSet} />
+            <InfoRow label="업종코드" value={company.industry_code} fieldKey="industry_code" companyId={company.id} pendingSet={pendingSet} />
+            <InfoRow label="기업규모" value={company.company_size} fieldKey="company_size" companyId={company.id} pendingSet={pendingSet} />
           </div>
         )}
       </div>
@@ -370,20 +419,69 @@ export function CompanyDetail({ company: initialCompany, owner: initialOwner, ac
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function FinStat({
+  label,
+  hasValue,
+  displayValue,
+  fieldKey,
+  companyId,
+  pendingSet,
+}: {
+  label: string
+  hasValue: boolean
+  displayValue: string
+  fieldKey: FieldKey
+  companyId: string
+  pendingSet: Set<string>
+}) {
   return (
     <div>
       <span className="text-xs text-slate-400">{label}</span>
-      <p className="text-lg font-semibold text-slate-900">{value}</p>
+      {hasValue ? (
+        <p className="text-lg font-semibold text-slate-900">{displayValue}</p>
+      ) : (
+        <div className="mt-1">
+          <RequestFieldButton
+            companyId={companyId}
+            fieldKey={fieldKey}
+            initialPending={pendingSet.has(fieldKey)}
+          />
+        </div>
+      )}
     </div>
   )
 }
 
-function InfoRow({ label, value, muted }: { label: string; value: string | null | undefined; muted?: boolean }) {
+function InfoRow({
+  label,
+  value,
+  muted,
+  fieldKey,
+  companyId,
+  pendingSet,
+}: {
+  label: string
+  value: string | null | undefined
+  muted?: boolean
+  fieldKey?: FieldKey
+  companyId?: string
+  pendingSet?: Set<string>
+}) {
+  const hasValue = value !== null && value !== undefined && value !== ''
   return (
-    <div className="flex gap-2">
-      <span className="text-xs text-slate-400 w-24 shrink-0 pt-0.5">{label}</span>
-      <span className={muted ? 'text-slate-400' : 'text-slate-700'}>{value || '-'}</span>
+    <div className="flex gap-2 items-center">
+      <span className="text-xs text-slate-400 w-24 shrink-0">{label}</span>
+      {hasValue ? (
+        <span className={muted ? 'text-slate-400' : 'text-slate-700'}>{value}</span>
+      ) : fieldKey && companyId && pendingSet ? (
+        <RequestFieldButton
+          companyId={companyId}
+          fieldKey={fieldKey}
+          initialPending={pendingSet.has(fieldKey)}
+        />
+      ) : (
+        <span className="text-slate-400">-</span>
+      )}
     </div>
   )
 }

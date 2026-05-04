@@ -3,12 +3,20 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { AppUser, AppUserStatus, AppUserRole } from '@/lib/types'
+import type { FieldRequest } from '@/lib/fieldRequests'
 import { setUserStatus, setUserRole } from './actions'
+import { fulfillFieldRequest, dismissFieldRequest } from './requestActions'
+
+type RequestRow = FieldRequest & {
+  company_name: string
+  requester_email: string | null
+}
 
 interface Props {
   users: AppUser[]
   watchlistCounts: Record<string, number>
   currentUserId: string
+  requests: RequestRow[]
 }
 
 const STATUS_BADGE: Record<AppUserStatus, string> = {
@@ -17,8 +25,11 @@ const STATUS_BADGE: Record<AppUserStatus, string> = {
   rejected: 'bg-rose-100 text-rose-700',
 }
 
-export function AdminClient({ users, watchlistCounts, currentUserId }: Props) {
+export function AdminClient({ users, watchlistCounts, currentUserId, requests }: Props) {
   const [filter, setFilter] = useState<AppUserStatus | 'all'>('all')
+  const [tab, setTab] = useState<'users' | 'requests'>(
+    requests.length > 0 ? 'requests' : 'users'
+  )
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -49,32 +60,54 @@ export function AdminClient({ users, watchlistCounts, currentUserId }: Props) {
 
   return (
     <div className="h-full flex flex-col">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">Admin · Users</h1>
-          <p className="text-xs text-slate-500">
-            {users.length} total
-            {pendingCount > 0 && (
-              <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-medium">
-                {pendingCount} pending
+      <header className="px-6 py-4 border-b border-slate-200 bg-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-slate-900">Admin</h1>
+            <p className="text-xs text-slate-500">
+              {users.length} users
+              {pendingCount > 0 && (
+                <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-medium">
+                  {pendingCount} pending
+                </span>
+              )}
+              {requests.length > 0 && (
+                <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium">
+                  {requests.length} field requests
+                </span>
+              )}
+            </p>
+          </div>
+          {tab === 'users' && (
+            <div className="flex gap-2">
+              {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                    filter === f
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  {f[0].toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex gap-1 mt-3 border-b border-slate-200 -mb-4">
+          <TabBtn active={tab === 'users'} onClick={() => setTab('users')}>
+            Users
+          </TabBtn>
+          <TabBtn active={tab === 'requests'} onClick={() => setTab('requests')}>
+            Field requests
+            {requests.length > 0 && (
+              <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-medium">
+                {requests.length}
               </span>
             )}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                filter === f
-                  ? 'bg-slate-900 text-white border-slate-900'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              {f[0].toUpperCase() + f.slice(1)}
-            </button>
-          ))}
+          </TabBtn>
         </div>
       </header>
 
@@ -84,6 +117,14 @@ export function AdminClient({ users, watchlistCounts, currentUserId }: Props) {
         </div>
       )}
 
+      {tab === 'requests' ? (
+        <RequestsPanel
+          requests={requests}
+          isPending={isPending}
+          onError={setError}
+          startTransition={startTransition}
+        />
+      ) : (
       <div className={`flex-1 overflow-auto ${isPending ? 'opacity-60' : ''}`}>
         <table className="w-full">
           <thead className="bg-slate-50 sticky top-0">
@@ -166,6 +207,143 @@ export function AdminClient({ users, watchlistCounts, currentUserId }: Props) {
         {sorted.length === 0 && (
           <div className="text-center py-16 text-sm text-slate-400">No users in this filter</div>
         )}
+      </div>
+      )}
+    </div>
+  )
+}
+
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+        active
+          ? 'border-slate-900 text-slate-900'
+          : 'border-transparent text-slate-500 hover:text-slate-700'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function RequestsPanel({
+  requests,
+  isPending,
+  onError,
+  startTransition,
+}: {
+  requests: RequestRow[]
+  isPending: boolean
+  onError: (e: string | null) => void
+  startTransition: React.TransitionStartFunction
+}) {
+  if (requests.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-sm text-slate-400">No pending field requests.</p>
+      </div>
+    )
+  }
+  return (
+    <div className={`flex-1 overflow-auto p-6 space-y-3 bg-slate-50 ${isPending ? 'opacity-60' : ''}`}>
+      {requests.map((r) => (
+        <RequestRowCard
+          key={r.id}
+          request={r}
+          onError={onError}
+          startTransition={startTransition}
+        />
+      ))}
+    </div>
+  )
+}
+
+function RequestRowCard({
+  request,
+  onError,
+  startTransition,
+}: {
+  request: RequestRow
+  onError: (e: string | null) => void
+  startTransition: React.TransitionStartFunction
+}) {
+  const [value, setValue] = useState('')
+
+  const fulfill = () => {
+    onError(null)
+    if (!value.trim()) {
+      onError('Enter a value first')
+      return
+    }
+    startTransition(async () => {
+      try { await fulfillFieldRequest(request.id, value) } catch (e) {
+        onError(e instanceof Error ? e.message : 'Action failed')
+      }
+    })
+  }
+
+  const dismiss = () => {
+    onError(null)
+    startTransition(async () => {
+      try { await dismissFieldRequest(request.id) } catch (e) {
+        onError(e instanceof Error ? e.message : 'Action failed')
+      }
+    })
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href={`/company/${request.company_id}`}
+              className="text-sm font-medium text-slate-900 hover:text-blue-600 truncate"
+            >
+              {request.company_name}
+            </Link>
+            <span className="text-xs text-slate-400">·</span>
+            <span className="text-xs text-slate-600 font-medium">{request.field_label}</span>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Requested by {request.requester_email ?? 'unknown'} ·{' '}
+            {new Date(request.created_at).toLocaleString()}
+          </p>
+          {request.note && (
+            <p className="text-xs text-slate-600 mt-1 italic">"{request.note}"</p>
+          )}
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') fulfill() }}
+          placeholder={`Enter ${request.field_label}…`}
+          className="flex-1 px-3 py-1.5 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          onClick={fulfill}
+          className="px-3 py-1.5 bg-emerald-600 text-white text-sm rounded-md hover:bg-emerald-700"
+        >
+          Fulfill
+        </button>
+        <button
+          onClick={dismiss}
+          className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-sm rounded-md hover:bg-slate-50"
+        >
+          Dismiss
+        </button>
       </div>
     </div>
   )

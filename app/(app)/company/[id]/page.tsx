@@ -46,6 +46,14 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
     watched = !!w
   }
 
+  const { data: pendingReqs } = await supabase
+    .from('field_requests')
+    .select('field_key')
+    .eq('company_id', id)
+    .eq('status', 'pending')
+
+  const pendingFields = new Set<string>((pendingReqs ?? []).map((r) => r.field_key))
+
   return (
     <CompanyDetail
       company={company}
@@ -53,6 +61,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
       activities={activities || []}
       note={notes?.[0] || null}
       initialWatched={watched}
+      pendingFields={Array.from(pendingFields)}
     />
   )
 }
