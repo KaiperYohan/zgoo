@@ -105,10 +105,24 @@ export function CompaniesTable({
     }
     const qs = params.toString()
     const url = qs ? `${pathname}?${qs}` : pathname
+    // Persist the current search so navigating to a company page and back to
+    // /companies (no params) returns the user here. Fire-and-forget — fast
+    // enough not to block, and a stale save is harmless.
+    fetch('/api/search-state', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ query: qs }),
+    }).catch(() => {})
     startTransition(() => {
       if (mode === 'replace') router.replace(url)
       else router.push(url)
     })
+  }
+
+  const resetSearch = async () => {
+    await fetch('/api/search-state', { method: 'DELETE' }).catch(() => {})
+    setSearchInput('')
+    startTransition(() => router.push(pathname))
   }
 
   const handleFilterChange = (patch: Partial<Record<keyof FilterState, string | null>>) => {
@@ -277,6 +291,15 @@ export function CompaniesTable({
               </span>
             )}
           </button>
+          {(q || stage || activeFilterCount > 0) && (
+            <button
+              onClick={resetSearch}
+              className="px-3 py-1.5 border border-slate-200 text-slate-500 rounded-lg text-sm hover:bg-slate-50 hover:text-slate-700 transition-colors"
+              title="Clear all filters and forget saved search"
+            >
+              Reset
+            </button>
+          )}
           <select
             value={stage}
             onChange={(e) => updateParams({ stage: e.target.value || null, page: '1' })}

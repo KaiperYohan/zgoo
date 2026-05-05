@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { CompaniesTable } from './CompaniesTable'
 import { CompanyEnriched, Owner } from '@/lib/types'
@@ -7,6 +8,23 @@ import {
   fetchNoteMatchingCompanyIds,
   SP,
 } from '@/lib/parseCompanyFilters'
+
+// Params we treat as "real" search state. If none are present we consider the
+// URL bare and fall back to the user's saved last search.
+const SEARCH_PARAM_KEYS = [
+  'q', 'stage', 'page', 'sort', 'dir',
+  'rev_min', 'rev_max', 'emp_min', 'emp_max', 'mar_min', 'mar_max',
+  'founded_from', 'founded_to', 'growth_min', 'growth_max', 'profit_min',
+  'debt_max', 'regions', 'grades', 'industry',
+] as const
+
+function hasAnySearchParam(sp: SP): boolean {
+  return SEARCH_PARAM_KEYS.some((k) => {
+    const v = sp[k]
+    if (Array.isArray(v)) return v.some((x) => x && x.length)
+    return typeof v === 'string' && v.length > 0
+  })
+}
 
 const PAGE_SIZE = 50
 const SORT_COLUMNS = [
@@ -29,14 +47,34 @@ export default async function CompaniesPage({
   searchParams: Promise<SP>
 }) {
   const sp = await searchParams
+  const supabase = await createClient()
+
+  // If the URL has no search params, the user landed on /companies fresh
+  // (sidebar nav, direct visit, etc.). Bounce them to their last saved search
+  // so they don't lose context after visiting a company page. The ?fresh=1
+  // sentinel and the explicit Reset button both bypass this — see the
+  // CompaniesTable client for how that's wired.
+  const isFresh = sp.fresh === '1' || (Array.isArray(sp.fresh) && sp.fresh.includes('1'))
+  if (!hasAnySearchParam(sp) && !isFresh) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: saved } = await supabase
+        .from('user_search_state')
+        .select('query')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (saved?.query) {
+        redirect(`/companies?${saved.query}`)
+      }
+    }
+  }
+
   const filters = parseCompanyFilters(sp)
   const getParam = (k: string) => (Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k])
   const page = Math.max(1, parseInt(getParam('page') ?? '1', 10) || 1)
   const sortRaw = (getParam('sort') ?? 'name') as SortKey
   const sort: SortKey = SORT_COLUMNS.includes(sortRaw) ? sortRaw : 'name'
   const dir: 'asc' | 'desc' = getParam('dir') === 'desc' ? 'desc' : 'asc'
-
-  const supabase = await createClient()
 
   const noteMatchIds = await fetchNoteMatchingCompanyIds(supabase, filters.q)
 
