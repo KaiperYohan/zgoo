@@ -50,12 +50,36 @@ export function sanitizeForIlike(s: string): string {
   return s.replace(/[,%_]/g, (c) => (c === ',' ? ' ' : '\\' + c))
 }
 
+// Free-text search now also matches the body of any note attached to a
+// company. We do that as a separate `notes` query and OR the resulting
+// company_ids into the main filter.
+const NOTES_MATCH_CAP = 500
+
+export async function fetchNoteMatchingCompanyIds(
+  supabase: SupabaseClient,
+  rawQ: string
+): Promise<string[]> {
+  if (!rawQ) return []
+  const s = sanitizeForIlike(rawQ)
+  const { data } = await supabase
+    .from('notes')
+    .select('company_id')
+    .ilike('body', `%${s}%`)
+    .limit(NOTES_MATCH_CAP)
+  return Array.from(new Set((data ?? []).map((r) => r.company_id as string)))
+}
+
 // Apply filters to a Supabase query builder on `companies_enriched`.
 // Works for both select('*') and select('id') etc.
 // Returns the chained query (continue with .order/.range/etc).
+//
+// `noteMatchIds`: optional list of company_ids whose notes contain `q`. Pass
+// the result of fetchNoteMatchingCompanyIds() here to make the search
+// match note bodies in addition to the company-table columns below.
 export function applyCompanyFilters<T>(
   builder: T,
-  p: CompanyFilters
+  p: CompanyFilters,
+  noteMatchIds: string[] = []
 ): T {
   // Cast to any for the fluent chain — all the methods we call exist on the
   // Supabase PostgrestFilterBuilder; narrowing is not worth the hassle.
@@ -71,9 +95,17 @@ export function applyCompanyFilters<T>(
   if (p.stage) q = q.eq('stage', p.stage)
   if (p.q) {
     const s = sanitizeForIlike(p.q)
-    q = q.or(
-      `name.ilike.%${s}%,industry.ilike.%${s}%,ceo_name.ilike.%${s}%,corp_reg_no.ilike.%${s}%,biz_reg_no.ilike.%${s}%`
-    )
+    const parts = [
+      `name.ilike.%${s}%`,
+      `industry.ilike.%${s}%`,
+      `ceo_name.ilike.%${s}%`,
+      `corp_reg_no.ilike.%${s}%`,
+      `biz_reg_no.ilike.%${s}%`,
+    ]
+    if (noteMatchIds.length) {
+      parts.push(`id.in.(${noteMatchIds.join(',')})`)
+    }
+    q = q.or(parts.join(','))
   }
   if (p.revMin !== null) q = q.gte('revenue_krw', p.revMin * UK_TO_KRW)
   if (p.revMax !== null) q = q.lte('revenue_krw', p.revMax * UK_TO_KRW)
@@ -106,6 +138,7 @@ export async function collectAllMatchingIds(
   p: CompanyFilters,
   maxIds = 50000
 ): Promise<string[]> {
+  const noteMatchIds = await fetchNoteMatchingCompanyIds(supabase, p.q)
   const ids: string[] = []
   const pageSize = 1000
   let offset = 0
@@ -115,7 +148,7 @@ export async function collectAllMatchingIds(
       .select('id')
       .order('id', { ascending: true })
       .range(offset, offset + pageSize - 1)
-    builder = applyCompanyFilters(builder, p)
+    builder = applyCompanyFilters(builder, p, noteMatchIds)
     const { data, error } = await builder
     if (error) throw error
     if (!data || data.length === 0) break

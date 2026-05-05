@@ -1,7 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { CompaniesTable } from './CompaniesTable'
 import { CompanyEnriched, Owner } from '@/lib/types'
-import { parseCompanyFilters, applyCompanyFilters, SP } from '@/lib/parseCompanyFilters'
+import {
+  parseCompanyFilters,
+  applyCompanyFilters,
+  fetchNoteMatchingCompanyIds,
+  SP,
+} from '@/lib/parseCompanyFilters'
 
 const PAGE_SIZE = 50
 const SORT_COLUMNS = [
@@ -33,13 +38,15 @@ export default async function CompaniesPage({
 
   const supabase = await createClient()
 
+  const noteMatchIds = await fetchNoteMatchingCompanyIds(supabase, filters.q)
+
   let query = supabase
     .from('companies_enriched')
     .select('*', { count: 'exact' })
     .order(sort, { ascending: dir === 'asc', nullsFirst: false })
     .order('id', { ascending: true })
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1)
-  query = applyCompanyFilters(query, filters)
+  query = applyCompanyFilters(query, filters, noteMatchIds)
 
   const { data: companies, count, error } = await query
   if (error) {
