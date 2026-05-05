@@ -58,13 +58,15 @@ export default async function CompaniesPage({
   if (!hasAnySearchParam(sp) && !isFresh) {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      const { data: saved } = await supabase
-        .from('user_search_state')
+      const { data: latest } = await supabase
+        .from('search_history')
         .select('query')
         .eq('user_id', user.id)
+        .order('last_used_at', { ascending: false })
+        .limit(1)
         .maybeSingle()
-      if (saved?.query) {
-        redirect(`/companies?${saved.query}`)
+      if (latest?.query) {
+        redirect(`/companies?${latest.query}`)
       }
     }
   }

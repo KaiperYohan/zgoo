@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition, type ReactNode } from 'react'
+import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import {
@@ -17,6 +17,7 @@ import { AddCompanyModal } from '@/components/AddCompanyModal'
 import { WatchlistButton } from '@/components/WatchlistButton'
 import { FiltersPanel, FilterState } from './FiltersPanel'
 import { NLSearchBar } from './NLSearchBar'
+import { SearchHistory } from './SearchHistory'
 
 type CompanyWithOwner = CompanyEnriched & { owner?: Owner | null; watched?: boolean }
 type SortKey =
@@ -63,6 +64,25 @@ export function CompaniesTable({
   const [bulkMoving, setBulkMoving] = useState(false)
   const [bulkError, setBulkError] = useState<string | null>(null)
 
+  // Debounced history save: only commit a query to search_history once the
+  // user has stopped tweaking for ~1.5s, so we don't store every keystroke.
+  const saveTimer = useRef<number | null>(null)
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+    }
+  }, [])
+  const scheduleHistorySave = (queryString: string) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = window.setTimeout(() => {
+      fetch('/api/search-history', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: queryString }),
+      }).catch(() => {})
+    }, 1500)
+  }
+
   useEffect(() => {
     if (searchInput === q) return
     const t = setTimeout(() => {
@@ -105,24 +125,21 @@ export function CompaniesTable({
     }
     const qs = params.toString()
     const url = qs ? `${pathname}?${qs}` : pathname
-    // Persist the current search so navigating to a company page and back to
-    // /companies (no params) returns the user here. Fire-and-forget — fast
-    // enough not to block, and a stale save is harmless.
-    fetch('/api/search-state', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ query: qs }),
-    }).catch(() => {})
+    // Schedule a debounced upsert into search_history. Only meaningful queries
+    // get saved — empty qs is filtered server-side.
+    scheduleHistorySave(qs)
     startTransition(() => {
       if (mode === 'replace') router.replace(url)
       else router.push(url)
     })
   }
 
-  const resetSearch = async () => {
-    await fetch('/api/search-state', { method: 'DELETE' }).catch(() => {})
+  const clearActiveFilters = () => {
     setSearchInput('')
-    startTransition(() => router.push(pathname))
+    // Use ?fresh=1 to bypass the server-side "redirect to last history entry"
+    // — without it, an empty URL would just bounce right back into the user's
+    // most recent saved search.
+    startTransition(() => router.push(`${pathname}?fresh=1`))
   }
 
   const handleFilterChange = (patch: Partial<Record<keyof FilterState, string | null>>) => {
@@ -293,13 +310,14 @@ export function CompaniesTable({
           </button>
           {(q || stage || activeFilterCount > 0) && (
             <button
-              onClick={resetSearch}
+              onClick={clearActiveFilters}
               className="px-3 py-1.5 border border-slate-200 text-slate-500 rounded-lg text-sm hover:bg-slate-50 hover:text-slate-700 transition-colors"
-              title="Clear all filters and forget saved search"
+              title="Clear current filters (history is kept)"
             >
-              Reset
+              Clear
             </button>
           )}
+          <SearchHistory onApply={() => { /* navigation handled inside */ }} />
           <select
             value={stage}
             onChange={(e) => updateParams({ stage: e.target.value || null, page: '1' })}
