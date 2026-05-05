@@ -6,7 +6,8 @@ import { DealCard } from './DealCard'
 import { AddCompanyModal } from './AddCompanyModal'
 import { createClient } from '@/lib/supabase/client'
 
-type CompanyWithOwner = Company & { owner?: Owner | null }
+export type Watcher = { user_id: string; email: string }
+type CompanyWithOwner = Company & { owner?: Owner | null; watchers?: Watcher[] }
 
 interface KanbanBoardProps {
   initialCompanies: CompanyWithOwner[]
@@ -151,7 +152,7 @@ export function KanbanBoard({ initialCompanies }: KanbanBoardProps) {
         initialStage={addingToStage}
         onClose={() => setAddingToStage(null)}
         onAdded={(company) => {
-          setCompanies(prev => [{ ...company, owner: null }, ...prev])
+          setCompanies(prev => [{ ...company, owner: null, watchers: [] }, ...prev])
           setAddingToStage(null)
         }}
       />

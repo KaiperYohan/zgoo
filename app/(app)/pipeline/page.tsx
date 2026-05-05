@@ -18,10 +18,40 @@ export default async function PipelinePage() {
     ? await supabase.from('owners').select('*').in('company_id', ids)
     : { data: [] as Array<{ company_id: string }> }
 
-  // Attach first owner to each company
-  const companiesWithOwners = (companies || []).map(c => ({
+  // Watcher chips on the kanban: every user who has this company on their
+  // personal watchlist. The kanban is the union of all watchlists, so showing
+  // owners makes "who's tracking this" visible at a glance.
+  const watchersByCompany = new Map<string, { user_id: string; email: string }[]>()
+  if (ids.length) {
+    const { data: watchRows } = await supabase
+      .from('user_watchlist')
+      .select('user_id, company_id')
+      .in('company_id', ids)
+    const watcherUserIds = Array.from(
+      new Set((watchRows ?? []).map((r) => r.user_id))
+    )
+    const emailById = new Map<string, string>()
+    if (watcherUserIds.length) {
+      const { data: us } = await supabase
+        .from('app_users')
+        .select('id, email')
+        .in('id', watcherUserIds)
+      for (const u of us ?? []) emailById.set(u.id, u.email)
+    }
+    for (const r of watchRows ?? []) {
+      const list = watchersByCompany.get(r.company_id) ?? []
+      list.push({
+        user_id: r.user_id,
+        email: emailById.get(r.user_id) ?? 'unknown',
+      })
+      watchersByCompany.set(r.company_id, list)
+    }
+  }
+
+  const companiesWithOwners = (companies || []).map((c) => ({
     ...c,
-    owner: (owners || []).find(o => o.company_id === c.id) || null,
+    owner: (owners || []).find((o) => o.company_id === c.id) || null,
+    watchers: watchersByCompany.get(c.id) ?? [],
   }))
 
   return (
