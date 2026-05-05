@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Company, Owner, Activity, Note, Stage } from '@/lib/types'
+import { Company, Owner, Activity, NoteWithAuthor, Stage } from '@/lib/types'
 import { formatKRW, formatPct } from '@/lib/format'
 import { CF_GRADES } from '@/lib/filters'
 import { StageProgress } from '@/components/StageProgress'
@@ -18,13 +18,15 @@ interface Props {
   company: Company
   owner: Owner | null
   activities: Activity[]
-  note: Note | null
+  notes: NoteWithAuthor[]
+  currentUserId: string
+  currentUserEmail: string
   initialWatched: boolean
   pendingFields: string[]
   pendingOwnerFields: string[]
 }
 
-export function CompanyDetail({ company: initialCompany, owner: initialOwner, activities, note, initialWatched, pendingFields, pendingOwnerFields }: Props) {
+export function CompanyDetail({ company: initialCompany, owner: initialOwner, activities, notes, currentUserId, currentUserEmail, initialWatched, pendingFields, pendingOwnerFields }: Props) {
   const pendingSet = new Set(pendingFields)
   const [company, setCompany] = useState(initialCompany)
   const [owner, setOwner] = useState(initialOwner)
@@ -413,7 +415,12 @@ export function CompanyDetail({ company: initialCompany, owner: initialOwner, ac
           />
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <CompanyNotes companyId={company.id} initialNote={note} />
+          <CompanyNotes
+            companyId={company.id}
+            initialNotes={notes}
+            currentUserId={currentUserId}
+            currentUserEmail={currentUserEmail}
+          />
         </div>
       </div>
 

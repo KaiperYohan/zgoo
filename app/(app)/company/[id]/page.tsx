@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { CompanyDetail } from './CompanyDetail'
 
@@ -15,6 +15,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
   if (!company) notFound()
 
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
   const { data: owners } = await supabase
     .from('owners')
@@ -28,23 +29,35 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
     .eq('company_id', id)
     .order('occurred_at', { ascending: false })
 
-  const { data: notes } = await supabase
+  const { data: rawNotes } = await supabase
     .from('notes')
     .select('*')
     .eq('company_id', id)
-    .order('updated_at', { ascending: false })
-    .limit(1)
+    .order('created_at', { ascending: false })
 
-  let watched = false
-  if (user) {
-    const { data: w } = await supabase
-      .from('user_watchlist')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .eq('company_id', id)
-      .maybeSingle()
-    watched = !!w
+  const noteUserIds = Array.from(
+    new Set((rawNotes ?? []).map((n) => n.user_id).filter((x): x is string => !!x))
+  )
+  const emailByUserId = new Map<string, string>()
+  if (noteUserIds.length) {
+    const { data: us } = await supabase
+      .from('app_users')
+      .select('id, email')
+      .in('id', noteUserIds)
+    for (const u of us ?? []) emailByUserId.set(u.id, u.email)
   }
+  const notes = (rawNotes ?? []).map((n) => ({
+    ...n,
+    author_email: n.user_id ? emailByUserId.get(n.user_id) ?? null : null,
+  }))
+
+  const { data: w } = await supabase
+    .from('user_watchlist')
+    .select('company_id')
+    .eq('user_id', user.id)
+    .eq('company_id', id)
+    .maybeSingle()
+  const watched = !!w
 
   const { data: pendingReqs } = await supabase
     .from('field_requests')
@@ -66,12 +79,19 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  const currentUserEmail =
+    user.id && emailByUserId.get(user.id)
+      ? emailByUserId.get(user.id)!
+      : user.email ?? ''
+
   return (
     <CompanyDetail
       company={company}
       owner={owners?.[0] || null}
       activities={activities || []}
-      note={notes?.[0] || null}
+      notes={notes}
+      currentUserId={user.id}
+      currentUserEmail={currentUserEmail}
       initialWatched={watched}
       pendingFields={Array.from(pendingFields)}
       pendingOwnerFields={Array.from(pendingOwnerFields)}

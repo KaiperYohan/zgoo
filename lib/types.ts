@@ -118,8 +118,15 @@ export interface Activity {
 export interface Note {
   id: string
   company_id: string
+  user_id: string | null
   body: string
+  created_at: string
   updated_at: string
+}
+
+// Notes joined with their author's email for display in the thread.
+export interface NoteWithAuthor extends Note {
+  author_email: string | null
 }
 
 export type AppUserStatus = 'pending' | 'approved' | 'rejected'
