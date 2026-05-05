@@ -9,7 +9,7 @@ import {
   STAGE_LABELS,
   PIPELINE_STAGES,
 } from '@/lib/types'
-import { formatKRW } from '@/lib/format'
+import { formatKRW, formatKstDate } from '@/lib/format'
 import { WatchlistButton } from '@/components/WatchlistButton'
 
 type WatchedCompany = Company & { addedAt: string | null }
@@ -47,7 +47,7 @@ export function UserPageClient({ profile, companies, isSelf }: Props) {
               <span className={`inline-block px-1.5 py-0.5 rounded ${
                 profile.role === 'admin' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-600'
               }`}>{profile.role}</span>{' '}
-              · joined {new Date(profile.created_at).toLocaleDateString()}
+              · joined {formatKstDate(profile.created_at)}
             </p>
           </div>
           <div className="text-right">

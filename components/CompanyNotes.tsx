@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { NoteWithAuthor } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { formatKstRelative } from '@/lib/format'
 
 interface CompanyNotesProps {
   companyId: string
@@ -99,7 +100,7 @@ export function CompanyNotes({
                 <span className="text-xs font-medium text-slate-700">
                   {n.author_email ?? <span className="italic text-slate-400">(legacy)</span>}
                 </span>
-                <span className="text-[10px] text-slate-400">{formatTime(n.created_at)}</span>
+                <span className="text-[10px] text-slate-400">{formatKstRelative(n.created_at)}</span>
               </div>
               <p className="text-sm text-slate-800 whitespace-pre-wrap break-words">{n.body}</p>
               {n.user_id === currentUserId && (
@@ -120,14 +121,3 @@ export function CompanyNotes({
   )
 }
 
-function formatTime(iso: string) {
-  const d = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1) return 'just now'
-  if (diffMin < 60) return `${diffMin}m ago`
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr}h ago`
-  return d.toLocaleDateString()
-}

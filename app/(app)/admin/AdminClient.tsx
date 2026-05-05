@@ -6,6 +6,7 @@ import type { AppUser, AppUserStatus, AppUserRole } from '@/lib/types'
 import type { FieldRequest } from '@/lib/fieldRequests'
 import { setUserStatus, setUserRole } from './actions'
 import { fulfillFieldRequest, dismissFieldRequest } from './requestActions'
+import { formatKstDate, formatKstDateTime } from '@/lib/format'
 
 type RequestRow = FieldRequest & {
   company_name: string
@@ -167,7 +168,7 @@ export function AdminClient({ users, watchlistCounts, currentUserId, requests }:
                     {watchlistCounts[u.id] ?? 0}
                   </td>
                   <td className="px-3 py-3 text-xs text-slate-500">
-                    {new Date(u.created_at).toLocaleDateString()}
+                    {formatKstDate(u.created_at)}
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex gap-1.5 flex-wrap">
@@ -317,7 +318,7 @@ function RequestRowCard({
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">
             Requested by {request.requester_email ?? 'unknown'} ·{' '}
-            {new Date(request.created_at).toLocaleString()}
+            {formatKstDateTime(request.created_at)}
           </p>
           {request.note && (
             <p className="text-xs text-slate-600 mt-1 italic">"{request.note}"</p>

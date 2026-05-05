@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Activity, ActivityType } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { formatKstDateTime } from '@/lib/format'
 
 const TYPE_ICONS: Record<ActivityType, string> = {
   email: '✉',
@@ -21,7 +22,14 @@ export function ActivityLog({ companyId, initialActivities }: ActivityLogProps) 
   const [showForm, setShowForm] = useState(false)
   const [type, setType] = useState<ActivityType>('note')
   const [body, setBody] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 16))
+  // datetime-local inputs work in the viewer's browser timezone. Default to
+  // "now" expressed in that timezone so the field doesn't read 9h behind for
+  // Korean users (whose browser is KST).
+  const [date, setDate] = useState(() => {
+    const now = new Date()
+    const tzOffsetMs = now.getTimezoneOffset() * 60000
+    return new Date(now.getTime() - tzOffsetMs).toISOString().slice(0, 16)
+  })
   const [saving, setSaving] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,7 +126,7 @@ export function ActivityLog({ companyId, initialActivities }: ActivityLogProps) 
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-slate-700 whitespace-pre-wrap">{a.body}</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  {new Date(a.occurred_at).toLocaleDateString('ko-KR')} {new Date(a.occurred_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                  {formatKstDateTime(a.occurred_at)}
                   {a.type && <span className="ml-2 capitalize">{a.type}</span>}
                 </p>
               </div>
