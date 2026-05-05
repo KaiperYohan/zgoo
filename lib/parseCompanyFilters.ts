@@ -72,7 +72,7 @@ export function applyCompanyFilters<T>(
   if (p.q) {
     const s = sanitizeForIlike(p.q)
     q = q.or(
-      `name.ilike.%${s}%,industry.ilike.%${s}%,ceo_name.ilike.%${s}%,corp_reg_no.ilike.%${s}%`
+      `name.ilike.%${s}%,industry.ilike.%${s}%,ceo_name.ilike.%${s}%,corp_reg_no.ilike.%${s}%,biz_reg_no.ilike.%${s}%`
     )
   }
   if (p.revMin !== null) q = q.gte('revenue_krw', p.revMin * UK_TO_KRW)

@@ -291,7 +291,7 @@ export function CompaniesTable({
           </select>
           <input
             type="text"
-            placeholder="Search name, industry, CEO, 법인번호…"
+            placeholder="Search name, industry, CEO, 법인/사업자번호…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"

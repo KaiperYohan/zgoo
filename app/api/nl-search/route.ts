@@ -17,7 +17,7 @@ const SYSTEM_PROMPT = `당신은 M&A 인수 대상 기업을 찾는 사용자의
 
 ### Filter schema (반환할 필드)
 
-- **q** (string): 회사명/업종/대표자/법인번호 자유 검색. 특정 회사명을 찾는 경우에만 사용.
+- **q** (string): 회사명/업종/대표자/법인번호/사업자번호 자유 검색 (부분일치). 특정 회사명이나 식별자를 찾는 경우에 사용. 사업자번호는 KODATA 원본 형식대로 저장되어 있으므로 입력값을 그대로 유지할 것 (보통 하이픈 포함, 예: "123-45-67890").
 - **stage** (enum): ${STAGES.join(' | ')}. 기본 pool(전체 풀). 특별 언급 없으면 생략.
 - **revMin / revMax** (number, 억 KRW): 매출액 범위. "100억" → 100, "1조" → 10000.
 - **empMin / empMax** (number): 종업원 수 범위.
@@ -66,7 +66,7 @@ const APPLY_FILTERS_TOOL: Anthropic.Tool = {
   input_schema: {
     type: 'object',
     properties: {
-      q: { type: 'string', description: '자유 텍스트 검색 (회사명/업종/대표자/법인번호 부분일치)' },
+      q: { type: 'string', description: '자유 텍스트 검색 (회사명/업종/대표자/법인번호/사업자번호 부분일치)' },
       stage: { type: 'string', enum: STAGES as unknown as string[] },
       revMin: { type: 'number', description: '최소 매출액 (억 KRW)' },
       revMax: { type: 'number', description: '최대 매출액 (억 KRW)' },
