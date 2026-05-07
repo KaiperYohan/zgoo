@@ -204,6 +204,36 @@ export function CompaniesTable({
     setSearchInput(typeof parsed.q === 'string' ? parsed.q : '')
   }
 
+  const downloadCsv = () => {
+    // Re-use the current URL's search params verbatim — the server endpoint
+    // parses them with the same parseCompanyFilters, so the export always
+    // mirrors what the user sees.
+    const params = new URLSearchParams()
+    if (q) params.set('q', q)
+    if (stage) params.set('stage', stage)
+    if (sort && sort !== 'name') params.set('sort', sort)
+    if (dir && dir !== 'asc') params.set('dir', dir)
+    if (filters.revMin !== null) params.set('rev_min', String(filters.revMin))
+    if (filters.revMax !== null) params.set('rev_max', String(filters.revMax))
+    if (filters.empMin !== null) params.set('emp_min', String(filters.empMin))
+    if (filters.empMax !== null) params.set('emp_max', String(filters.empMax))
+    if (filters.marMin !== null) params.set('mar_min', String(filters.marMin))
+    if (filters.marMax !== null) params.set('mar_max', String(filters.marMax))
+    if (filters.foundedFrom !== null) params.set('founded_from', String(filters.foundedFrom))
+    if (filters.foundedTo !== null) params.set('founded_to', String(filters.foundedTo))
+    if (filters.growthMin !== null) params.set('growth_min', String(filters.growthMin))
+    if (filters.growthMax !== null) params.set('growth_max', String(filters.growthMax))
+    if (filters.profitYearsMin !== null) params.set('profit_min', String(filters.profitYearsMin))
+    if (filters.debtMax !== null) params.set('debt_max', String(filters.debtMax))
+    if (filters.regions.length) params.set('regions', filters.regions.join(','))
+    if (filters.grades.length) params.set('grades', filters.grades.join(','))
+    if (filters.industry) params.set('industry', filters.industry)
+    // Trigger native download via a hidden anchor click.
+    const a = document.createElement('a')
+    a.href = `/api/export-csv?${params.toString()}`
+    a.click()
+  }
+
   const moveAllToWatchlist = async () => {
     const hasAnyFilter =
       !!q || !!stage || countActiveFilters(filters) > 0
@@ -211,8 +241,11 @@ export function CompaniesTable({
       setBulkError('필터를 적용해서 대상을 좁혀야 합니다 (실수 방지).')
       return
     }
+    const willSave = Math.min(total, 1000)
     const confirmed = window.confirm(
-      `현재 필터 결과(${total.toLocaleString()}개)를 모두 Watchlist로 이동하시겠습니까?`
+      total > 1000
+        ? `검색 결과는 ${total.toLocaleString()}개입니다. 상위 1,000개만 내 페이지(Watchlist)에 저장됩니다. 계속 하시겠습니까?`
+        : `검색 결과 ${willSave.toLocaleString()}개를 내 페이지(Watchlist)에 저장하시겠습니까?`
     )
     if (!confirmed) return
     setBulkMoving(true)
@@ -338,12 +371,20 @@ export function CompaniesTable({
             className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
+            onClick={downloadCsv}
+            disabled={total === 0}
+            className="px-3 py-1.5 border border-slate-200 text-slate-700 bg-white rounded-lg text-sm hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="현재 검색 결과를 CSV로 내려받기 (최대 1,000개)"
+          >
+            ↓ CSV ({Math.min(total, 1000).toLocaleString()})
+          </button>
+          <button
             onClick={moveAllToWatchlist}
             disabled={bulkMoving || total === 0}
             className="px-3 py-1.5 border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-lg text-sm hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed"
-            title="현재 필터 결과를 모두 Watchlist로 이동"
+            title="현재 검색 결과를 내 페이지 (Watchlist) 로 저장 (최대 1,000개)"
           >
-            {bulkMoving ? '이동 중…' : `→ Watchlist (${total.toLocaleString()})`}
+            {bulkMoving ? '저장 중…' : `★ Save to my page (${Math.min(total, 1000).toLocaleString()})`}
           </button>
           <button
             onClick={() => setShowAdd(true)}

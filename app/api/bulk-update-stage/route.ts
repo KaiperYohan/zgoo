@@ -7,9 +7,10 @@ import {
   SP,
 } from '@/lib/parseCompanyFilters'
 
-// Safety cap — refuse to bulk-move more than this in one shot. If you really
-// want to move 30k pool → watchlist at once, raise this (and brace yourself).
-const MAX_ROWS_PER_CALL = 20000
+// Hard cap matching the "Save to my page" button on /companies — silently
+// truncate to the top N matches by current sort. Any larger save is almost
+// always an accident (you don't manually triage 1k+ companies).
+const MAX_ROWS_PER_CALL = 1000
 // Supabase/PostgREST chokes on very long `IN` lists; chunk UPDATEs.
 const UPDATE_CHUNK = 500
 
@@ -33,20 +34,14 @@ export async function POST(req: Request) {
 
   let ids: string[]
   try {
-    ids = await collectAllMatchingIds(supabase, parsed, MAX_ROWS_PER_CALL + 1)
+    // Silently truncate to MAX_ROWS_PER_CALL — the UI confirm message already
+    // tells the user only the top N will be saved.
+    ids = await collectAllMatchingIds(supabase, parsed, MAX_ROWS_PER_CALL)
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: `Select failed: ${msg}` }, { status: 500 })
   }
-
-  if (ids.length > MAX_ROWS_PER_CALL) {
-    return NextResponse.json(
-      {
-        error: `Too many rows (${ids.length}). Narrow your filter (max ${MAX_ROWS_PER_CALL} per call).`,
-      },
-      { status: 400 }
-    )
-  }
+  ids = ids.slice(0, MAX_ROWS_PER_CALL)
 
   if (body.dryRun) {
     return NextResponse.json({ count: ids.length, updated: 0 })
