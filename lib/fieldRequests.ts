@@ -14,6 +14,7 @@ export type FieldKey =
   | 'founded'
   | 'ceo_name'
   | 'phone'
+  | 'email'
   | 'address'
   | 'biz_reg_no'
   | 'cash_flow_grade'
@@ -42,6 +43,7 @@ export const FIELD_SPECS: Record<FieldKey, FieldSpec> = {
   founded:         { label: 'Founded',          column: 'founded',         type: 'int',     entity: 'company' },
   ceo_name:        { label: '대표자',           column: 'ceo_name',        type: 'text',    entity: 'company' },
   phone:           { label: '전화번호',         column: 'phone',           type: 'text',    entity: 'company' },
+  email:           { label: '이메일',           column: 'email',           type: 'text',    entity: 'company' },
   address:         { label: '주소',             column: 'address',         type: 'text',    entity: 'company' },
   biz_reg_no:      { label: '사업자번호',       column: 'biz_reg_no',      type: 'text',    entity: 'company' },
   cash_flow_grade: { label: '현금흐름등급',     column: 'cash_flow_grade', type: 'text',    entity: 'company' },

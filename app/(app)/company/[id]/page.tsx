@@ -17,11 +17,57 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Fetch ALL owners now (the renovated page shows the full shareholder list).
+  // The legacy "Owner" card uses owners[0] as the primary contact owner.
   const { data: owners } = await supabase
     .from('owners')
     .select('*')
     .eq('company_id', id)
-    .limit(1)
+    .order('ownership_pct', { ascending: false, nullsFirst: false })
+
+  const { data: financials } = await supabase
+    .from('company_financials')
+    .select('*')
+    .eq('company_id', id)
+    .order('fiscal_year', { ascending: false })
+
+  const { data: tradePartners } = await supabase
+    .from('company_trade_partners')
+    .select('*')
+    .eq('company_id', id)
+    .order('rank', { ascending: true })
+
+  const { data: relatedCompanies } = await supabase
+    .from('related_companies')
+    .select('*')
+    .eq('company_id', id)
+    .order('rank', { ascending: true })
+
+  // Resolve related companies to existing companies in our DB by biz_reg_no
+  // so the UI can render them as links (when found).
+  const relatedBizNos = (relatedCompanies ?? [])
+    .map((r) => r.biz_reg_no)
+    .filter((x): x is string => !!x)
+  const relatedIdByBizNo = new Map<string, string>()
+  if (relatedBizNos.length) {
+    const { data: hits } = await supabase
+      .from('companies')
+      .select('id, biz_reg_no')
+      .in('biz_reg_no', relatedBizNos)
+    for (const h of hits ?? []) {
+      if (h.biz_reg_no) relatedIdByBizNo.set(h.biz_reg_no, h.id)
+    }
+  }
+  const relatedWithLinks = (relatedCompanies ?? []).map((r) => ({
+    ...r,
+    linked_company_id: r.biz_reg_no ? relatedIdByBizNo.get(r.biz_reg_no) ?? null : null,
+  }))
+
+  const { data: executives } = await supabase
+    .from('executives')
+    .select('*')
+    .eq('company_id', id)
+    .order('rank', { ascending: true })
 
   const { data: activities } = await supabase
     .from('activities')
@@ -88,6 +134,11 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
     <CompanyDetail
       company={company}
       owner={owners?.[0] || null}
+      shareholders={owners ?? []}
+      financials={financials ?? []}
+      tradePartners={tradePartners ?? []}
+      relatedCompanies={relatedWithLinks}
+      executives={executives ?? []}
       activities={activities || []}
       notes={notes}
       currentUserId={user.id}

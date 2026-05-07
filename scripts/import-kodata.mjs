@@ -70,6 +70,7 @@ function buildCompany(r) {
     address: clean(r['도로명주소']),
     ceo_name: clean(r['대표자명']),
     phone: clean(r['전화번호']),
+    email: clean(r['이메일']),
     employees: int(r['종업원수_최근']) ?? int(r['국민연금종업원수_최근']),
     founded: foundingYear(r['설립일자']),
     cash_flow_grade: clean(r['현금흐름등급_최근']),
@@ -77,6 +78,8 @@ function buildCompany(r) {
     company_type: clean(r['기업유형']),
     legal_form: clean(r['기업형태']),
     settlement_date: yyyymmddToDate(r['결산기준일']),
+    shareholder_count: int(r['주주수']),
+    executives_raw: clean(r['경영진']),
     // KODATA values are in 천원; companies.revenue_krw column is in KRW (matches seed).
     revenue_krw: (() => {
       const v = int(r['매출액_2025']);
@@ -115,6 +118,11 @@ function buildFinancials(companyId, r) {
       operating_margin: num(r[`영업이익률_${y}`]),
       debt_dependency: num(r[`차입금의존도_${y}`]),
       debt_ratio: num(r[`부채비율_전체_${y}`]),
+      operating_cash_flow:   int(r[`현금_영업활동현금흐름_${y}`]),
+      investing_cash_flow:   int(r[`투자활동현금흐름_현흐_${y}`]),
+      financing_cash_flow:   int(r[`재무활동현금흐름_${y}`]),
+      other_cash_flow:       int(r[`영업투자재무활동기타_${y}`]),
+      non_cash_transactions: int(r[`현금수입지출없는거래_${y}`]),
     };
     // skip rows where all financial values are null
     const hasData = Object.entries(row).some(
@@ -129,24 +137,88 @@ function buildOwners(companyId, r) {
   const out = [];
   const lead = clean(r['대표주주명']);
   const leadKind = clean(r['대표주주구분']);
+
+  // Collect 1..5 shareholders with their ownership %.
+  const ranked = [];
+  for (let i = 1; i <= 5; i++) {
+    const n = clean(r[`주주명_${i}`]);
+    const pct = num(r[`지분율_${i}`]);
+    if (n) ranked.push({ name: n, pct });
+  }
+  // Lead's pct, if the lead also appears in 주주명_1..5 (typically does).
+  const leadPct = lead
+    ? ranked.find((s) => s.name === lead)?.pct ?? null
+    : null;
+
   if (lead) {
     out.push({
       company_id: companyId,
       name: lead,
       relationship: leadKind ? `대표주주 (${leadKind})` : '대표주주',
+      ownership_pct: leadPct,
     });
   }
-  for (let i = 1; i <= 5; i++) {
-    const n = clean(r[`주주명_${i}`]);
-    if (n && n !== lead) out.push({ company_id: companyId, name: n, relationship: '주주' });
+  for (const s of ranked) {
+    if (s.name === lead) continue;
+    out.push({
+      company_id: companyId,
+      name: s.name,
+      relationship: '주주',
+      ownership_pct: s.pct,
+    });
   }
-  // dedupe by (name, relationship)
+  // dedupe by (name, relationship); keep first occurrence (which carries the pct).
   const seen = new Set();
   return out.filter((o) => {
     const k = `${o.name}|${o.relationship}`;
     if (seen.has(k)) return false;
     seen.add(k);
     return true;
+  });
+}
+
+function buildTradePartners(companyId, r) {
+  const out = [];
+  for (let i = 1; i <= 5; i++) {
+    const n = clean(r[`구매처명_${i}`]);
+    if (n) out.push({ company_id: companyId, kind: 'supplier', rank: i, name: n });
+  }
+  for (let i = 1; i <= 5; i++) {
+    const n = clean(r[`판매처명_${i}`]);
+    if (n) out.push({ company_id: companyId, kind: 'customer', rank: i, name: n });
+  }
+  return out;
+}
+
+function buildRelatedCompanies(companyId, r) {
+  const out = [];
+  for (let i = 1; i <= 5; i++) {
+    const name = clean(r[`관계사${i}_상호`]);
+    const biz = clean(r[`관계사${i}_사업자번호`]);
+    if (name) out.push({ company_id: companyId, rank: i, name, biz_reg_no: biz });
+  }
+  return out;
+}
+
+// 경영진 format: "대표이사 박병태, 감사 반대성, 기타비상무이사 이동수, ..."
+// Korean role tokens have no internal spaces and the name follows. Split on
+// the LAST whitespace per entry. If there's no space, the whole entry is the
+// name (role left null).
+function buildExecutives(companyId, r) {
+  const raw = clean(r['경영진']);
+  if (!raw) return [];
+  const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  return parts.map((entry, i) => {
+    const sp = entry.lastIndexOf(' ');
+    if (sp === -1) {
+      return { company_id: companyId, rank: i, role: null, name: entry };
+    }
+    return {
+      company_id: companyId,
+      rank: i,
+      role: entry.slice(0, sp).trim() || null,
+      name: entry.slice(sp + 1).trim(),
+    };
   });
 }
 
@@ -214,16 +286,26 @@ async function main() {
   }
   process.stdout.write('\n');
 
-  // 3. Build financials & owners keyed by id
+  // 3. Build financials, owners, trade partners, related companies, executives
   const allFinancials = [];
   const allOwners = [];
+  const allPartners = [];
+  const allRelated = [];
+  const allExecs = [];
   for (const [corpNo, r] of rowByCorp.entries()) {
     const id = idByCorp.get(corpNo);
     if (!id) continue;
     allFinancials.push(...buildFinancials(id, r));
     allOwners.push(...buildOwners(id, r));
+    allPartners.push(...buildTradePartners(id, r));
+    allRelated.push(...buildRelatedCompanies(id, r));
+    allExecs.push(...buildExecutives(id, r));
   }
-  console.log(`Financials: ${allFinancials.length}, Owners: ${allOwners.length}`);
+  console.log(
+    `Financials: ${allFinancials.length}, Owners: ${allOwners.length}, ` +
+      `Partners: ${allPartners.length}, Related: ${allRelated.length}, ` +
+      `Executives: ${allExecs.length}`
+  );
 
   console.log('Upserting financials…');
   await chunkedUpsert('company_financials', allFinancials, {
@@ -233,6 +315,21 @@ async function main() {
   console.log('Upserting owners…');
   await chunkedUpsert('owners', allOwners, {
     onConflict: 'company_id,name,relationship',
+  });
+
+  console.log('Upserting trade partners…');
+  await chunkedUpsert('company_trade_partners', allPartners, {
+    onConflict: 'company_id,kind,rank',
+  });
+
+  console.log('Upserting related companies…');
+  await chunkedUpsert('related_companies', allRelated, {
+    onConflict: 'company_id,rank',
+  });
+
+  console.log('Upserting executives…');
+  await chunkedUpsert('executives', allExecs, {
+    onConflict: 'company_id,rank',
   });
 
   console.log('Done.');

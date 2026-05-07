@@ -71,12 +71,73 @@ export interface Company {
   address: string | null
   ceo_name: string | null
   phone: string | null
+  email: string | null
   industry_code: string | null
   cash_flow_grade: string | null
   company_size: string | null
   company_type: string | null
   legal_form: string | null
   settlement_date: string | null
+  shareholder_count: number | null
+  executives_raw: string | null
+}
+
+// 3-year financial detail rows from KODATA (값은 천원 단위).
+export interface CompanyFinancials {
+  company_id: string
+  fiscal_year: number
+  assets: number | null
+  current_assets: number | null
+  liabilities: number | null
+  current_liab: number | null
+  short_term_debt: number | null
+  short_term_bonds: number | null
+  current_ltd: number | null
+  bonds: number | null
+  long_term_debt: number | null
+  equity: number | null
+  capital_stock: number | null
+  revenue: number | null
+  cogs: number | null
+  gross_profit: number | null
+  sga: number | null
+  operating_income: number | null
+  pretax_income: number | null
+  net_income: number | null
+  operating_margin: number | null
+  debt_dependency: number | null
+  debt_ratio: number | null
+  operating_cash_flow: number | null
+  investing_cash_flow: number | null
+  financing_cash_flow: number | null
+  other_cash_flow: number | null
+  non_cash_transactions: number | null
+}
+
+export type TradePartnerKind = 'supplier' | 'customer'
+
+export interface TradePartner {
+  id: string
+  company_id: string
+  kind: TradePartnerKind
+  rank: number
+  name: string
+}
+
+export interface RelatedCompany {
+  id: string
+  company_id: string
+  rank: number
+  name: string
+  biz_reg_no: string | null
+}
+
+export interface Executive {
+  id: string
+  company_id: string
+  rank: number
+  role: string | null
+  name: string
 }
 
 // companies_enriched view: companies + derived columns for M&A screening.
@@ -101,6 +162,7 @@ export interface Owner {
   email: string | null
   background: string | null
   relationship: string | null
+  ownership_pct: number | null
   created_at: string
 }
 
