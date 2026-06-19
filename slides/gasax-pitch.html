@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GasAX — AI-Powered Gas Utility Operations</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #0a0c10;
+    --ink-2: #11141b;
+    --paper: #f4f1e9;
+    --muted: #8a93a6;
+    --muted-2: #5d6477;
+    --line: rgba(244, 241, 233, 0.10);
+    --acid: #cdfa50;
+    --acid-dim: #9fc23a;
+    --warn: #ff7a59;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    background: #05060a;
+    font-family: 'Pretendard', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: var(--paper);
+  }
+
+  .stage {
+    width: min(97vw, 174vh);
+    aspect-ratio: 16 / 9;
+    position: relative;
+    container-type: size;
+  }
+
+  /* ---------------- Slides ---------------- */
+  .slide {
+    position: absolute;
+    inset: 0;
+    container-type: size;
+    background:
+      radial-gradient(120% 90% at 88% -10%, rgba(205, 250, 80, 0.10), transparent 45%),
+      radial-gradient(90% 80% at -10% 110%, rgba(80, 130, 250, 0.10), transparent 50%),
+      linear-gradient(160deg, var(--ink-2) 0%, var(--ink) 60%, #07090d 100%);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    box-shadow: 0 40px 120px -30px rgba(0,0,0,0.8);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(1.4cqh) scale(0.995);
+    transition: opacity .5s ease, transform .5s cubic-bezier(.2,.8,.2,1), visibility .5s;
+  }
+  .slide.is-active { opacity: 1; visibility: visible; transform: none; }
+
+  .slide::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    opacity: 0.05; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .inner {
+    position: relative; z-index: 2; height: 100%;
+    padding: 5.6cqh 5.4cqw;
+    display: flex; flex-direction: column;
+  }
+
+  /* shared bits */
+  .kicker {
+    display: flex; align-items: center; gap: 1.1cqw;
+    font-size: 1.4cqh; letter-spacing: 0.4em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600;
+  }
+  .kicker .dot { width: .85cqh; height: .85cqh; background: var(--acid); border-radius: 50%; box-shadow: 0 0 12px var(--acid); }
+  .s-title {
+    font-family: 'Fraunces', serif; font-weight: 600; line-height: .98;
+    letter-spacing: -0.015em; margin-top: 1.8cqh;
+  }
+  .s-title .ko { font-family:'Pretendard'; font-weight: 800; letter-spacing:-.03em; }
+  .acidtext {
+    background: linear-gradient(180deg, var(--paper), var(--acid));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .sub { color: var(--muted); font-weight: 500; }
+
+  /* =============== SLIDE 1 — COVER =============== */
+  .cover .inner { justify-content: space-between; }
+  .cover .top { display:flex; justify-content: space-between; align-items:flex-start; }
+  .cover .badge {
+    font-size: 1.35cqh; letter-spacing:.32em; text-transform:uppercase;
+    color: var(--muted-2); font-weight:600; text-align:right; line-height:1.7;
+  }
+  .cover h1 { font-family:'Fraunces',serif; font-weight:500; font-size: 8.4cqh; line-height:.96; letter-spacing:-.02em; }
+  .cover h1 b { font-weight: 600; }
+  .cover .ko-sub { font-size: 2.4cqh; color: var(--muted); font-weight:600; margin-top:1.6cqh; letter-spacing:-.02em; }
+  .cover .presenter { font-size: 1.7cqh; color: var(--paper); font-weight:600; margin-top:2.2cqh; }
+  .cover .presenter span { color: var(--acid-dim); }
+  .stats { display:grid; grid-template-columns: repeat(3,1fr); gap: 2.4cqw; border-top:1px solid var(--line); padding-top: 3cqh; }
+  .stat .big { font-family:'Fraunces',serif; font-weight:500; font-size: 6.4cqh; line-height:1; letter-spacing:-.02em; }
+  .stat .big.warn { color: var(--warn); }
+  .stat .lab { font-size:1.5cqh; color: var(--muted); margin-top:.7cqh; font-weight:600; line-height:1.35; }
+  .stat .lab b { color: var(--paper); font-weight:700; display:block; }
+
+  /* =============== generic header for content slides =============== */
+  .head { display:flex; justify-content:space-between; align-items:flex-end; padding-bottom: 2.6cqh; border-bottom:1px solid var(--line); }
+  .head .s-title { font-size: 5.6cqh; }
+  .head .right { text-align:right; color:var(--muted); font-size:1.7cqh; font-weight:500; max-width:34cqw; line-height:1.5; }
+  .head .right b { color: var(--paper); font-weight:700; }
+
+  /* =============== SLIDE 2 — PROBLEM (4 cards) =============== */
+  .grid4 { flex:1; display:grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2cqh 2.4cqw; padding-top: 2.6cqh; }
+  .pcard { position:relative; padding: 2cqh 2.2cqw; border:1px solid var(--line); border-radius: 1.4cqh; background: rgba(244,241,233,0.02); display:flex; flex-direction:column; }
+  .pcard .pn { font-family:'Fraunces',serif; font-size:2.6cqh; font-weight:300; color: var(--acid-dim); }
+  .pcard h3 { font-size: 2.5cqh; font-weight:800; letter-spacing:-.03em; margin-top:.6cqh; }
+  .pcard .en { font-size:1.35cqh; letter-spacing:.16em; text-transform:uppercase; color:var(--muted-2); font-weight:700; margin-top:.4cqh; }
+  .pcard p { font-size:1.7cqh; color:var(--muted); font-weight:500; line-height:1.45; margin-top: auto; padding-top:1.2cqh; }
+  .pcard p b { color: var(--paper); font-weight:700; }
+
+  /* =============== SLIDE 3 — SOLUTION (3 pillars + strip) =============== */
+  .grid3 { display:grid; grid-template-columns: repeat(3,1fr); gap: 2.4cqw; padding-top: 3cqh; flex:1; }
+  .pillar { display:flex; flex-direction:column; border-top:2px solid var(--acid); padding-top: 2cqh; }
+  .pillar .en { font-size:1.35cqh; letter-spacing:.22em; text-transform:uppercase; color: var(--acid-dim); font-weight:700; }
+  .pillar h3 { font-size:3cqh; font-weight:800; letter-spacing:-.03em; margin-top:.6cqh; }
+  .pillar p { font-size:1.8cqh; color:var(--muted); font-weight:500; line-height:1.5; margin-top:1.4cqh; }
+  .pillar p b { color:var(--paper); font-weight:600; }
+  .strip { margin-top: 2.8cqh; padding: 2cqh 2.4cqw; border:1px solid var(--line); border-radius:1.2cqh; background: rgba(205,250,80,0.05);
+           display:flex; align-items:center; gap:1.6cqw; font-size:1.95cqh; font-weight:600; }
+  .strip .tag { font-family:'Fraunces',serif; font-style:italic; color: var(--acid); font-size:2.4cqh; white-space:nowrap; }
+  .strip span { color: var(--muted); font-weight:500; }
+  .strip b { color: var(--acid); font-weight:700; }
+
+  /* =============== SLIDE 4 — PRINCIPLES =============== */
+  .plist { flex:1; display:flex; flex-direction:column; justify-content:space-between; padding-top:1cqh; }
+  .prow { display:grid; grid-template-columns: 6cqw 20cqw 1fr; align-items:center; gap:2.2cqw; padding:1.35cqh .4cqw; border-bottom:1px solid var(--line); position:relative; }
+  .prow:last-child { border-bottom:none; }
+  .prow .num { font-family:'Fraunces',serif; font-size:4.4cqh; font-weight:300; color:var(--muted-2); font-variant-numeric:tabular-nums; }
+  .prow .pn2 .en { font-size:1.2cqh; letter-spacing:.24em; text-transform:uppercase; color:var(--acid-dim); font-weight:700; }
+  .prow .pn2 .kr { font-size:2.5cqh; font-weight:800; letter-spacing:-.03em; margin-top:.3cqh; }
+  .prow .pd { font-size:1.75cqh; color:var(--muted); font-weight:500; line-height:1.45; }
+  .prow .pd b { color: var(--paper); font-weight:600; }
+  .prow .pd .hl { color: var(--acid); font-weight:600; }
+  .phases { display:flex; gap:.6cqw; margin-top:.9cqh; flex-wrap:wrap; }
+  .phase { font-size:1.3cqh; font-weight:600; background:rgba(244,241,233,.05); border:1px solid var(--line); border-radius:999px; padding:.45cqh 1cqw; }
+  .phase em { color:var(--acid-dim); font-family:'Fraunces',serif; font-style:italic; margin-right:.4cqw; }
+
+  /* =============== SLIDE 5 — ROADMAP + KPIs =============== */
+  .timeline { display:grid; grid-template-columns: repeat(4,1fr); gap:2cqw; padding-top:3cqh; flex:1; }
+  .tphase { display:flex; flex-direction:column; }
+  .tphase .when { font-family:'Fraunces',serif; font-style:italic; font-size:2cqh; color:var(--acid); }
+  .tphase .step { display:flex; align-items:baseline; gap:1cqw; margin-top:1cqh; padding-top:1.4cqh; border-top:2px solid var(--line); }
+  .tphase .idx { font-family:'Fraunces',serif; font-size:3.4cqh; font-weight:300; color:var(--muted-2); }
+  .tphase h3 { font-size:2.4cqh; font-weight:800; letter-spacing:-.03em; }
+  .tphase .ko { font-size:1.4cqh; color:var(--muted); font-weight:600; margin-top:.2cqh; }
+  .tphase ul { list-style:none; margin-top:1.6cqh; display:flex; flex-direction:column; gap:.9cqh; }
+  .tphase li { font-size:1.6cqh; color:var(--muted); font-weight:500; padding-left:1.6cqw; position:relative; }
+  .tphase li::before { content:"▸"; position:absolute; left:0; color:var(--acid-dim); }
+  .kpis { display:grid; grid-template-columns: repeat(4,1fr); gap:2.4cqw; margin-top:2.6cqh; padding-top:2.6cqh; border-top:1px solid var(--line); }
+  .kpi .big { font-family:'Fraunces',serif; font-weight:500; font-size:4.6cqh; line-height:1; }
+  .kpi .lab { font-size:1.45cqh; color:var(--muted); font-weight:600; margin-top:.5cqh; }
+  .kpi .lab b { color:var(--paper); display:block; font-weight:700; }
+
+  /* =============== SLIDE 6 — ENGAGEMENT + CTA =============== */
+  .pkgs { display:grid; grid-template-columns: repeat(3,1fr); gap:2cqw; padding-top:2.8cqh; }
+  .pkg { padding:2cqh 1.8cqw; border:1px solid var(--line); border-radius:1.4cqh; background:rgba(244,241,233,.02); display:flex; flex-direction:column; position:relative; }
+  .pkg.reco { border-color: var(--acid); background:rgba(205,250,80,.06); }
+  .pkg .rib { position:absolute; top:-1.1cqh; right:1.4cqw; background:var(--acid); color:#0a0c10; font-size:1.1cqh; font-weight:800; letter-spacing:.14em; text-transform:uppercase; padding:.35cqh .9cqw; border-radius:999px; }
+  .pkg .en { font-size:1.9cqh; font-weight:800; letter-spacing:-.02em; }
+  .pkg .ko { font-size:1.4cqh; color:var(--muted); font-weight:600; margin-top:.25cqh; }
+  .pkg ul { list-style:none; margin-top:1.5cqh; display:flex; flex-direction:column; gap:.85cqh; }
+  .pkg li { font-size:1.5cqh; color:var(--muted); font-weight:500; padding-left:1.5cqw; position:relative; line-height:1.3; }
+  .pkg li::before { content:"✓"; position:absolute; left:0; color:var(--acid-dim); font-weight:700; }
+  .cta { margin-top:2.4cqh; padding-top:2.4cqh; border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+  .cta .big { font-family:'Fraunces',serif; font-weight:500; font-size:3.2cqh; line-height:1.05; }
+  .cta .big .ko { font-family:'Pretendard'; font-weight:800; font-size:2cqh; color:var(--muted); display:block; margin-top:.5cqh; letter-spacing:-.02em; }
+  .cta .checks { text-align:right; font-size:1.55cqh; color:var(--muted); font-weight:600; line-height:1.7; }
+  .cta .checks b { color: var(--acid); }
+
+  /* ---------------- Navigation UI ---------------- */
+  .ui { position:absolute; inset:0; z-index:50; pointer-events:none; }
+  .ui button { pointer-events:auto; cursor:pointer; font-family:'Pretendard'; }
+  .home {
+    position:absolute; top:3.4cqh; left:3.4cqw;
+    width:5cqh; height:5cqh; border-radius:50%;
+    background: rgba(10,12,16,.55); border:1px solid var(--line);
+    color: var(--paper); display:grid; place-items:center;
+    backdrop-filter: blur(6px); transition: all .25s ease;
+  }
+  .home svg { width:2.3cqh; height:2.3cqh; }
+  .home:hover { background: var(--acid); color:#0a0c10; border-color:var(--acid); transform: translateY(-2px); }
+  .home[hidden]{ display:none; }
+
+  .counter {
+    position:absolute; top:3.9cqh; right:3.4cqw;
+    font-family:'Fraunces',serif; font-size:1.9cqh; color:var(--muted);
+    letter-spacing:.05em; font-variant-numeric:tabular-nums;
+  }
+  .counter b { color: var(--paper); }
+
+  .arrows { position:absolute; bottom:3.2cqh; right:3.4cqw; display:flex; gap:1cqw; }
+  .arrows button {
+    width:4.6cqh; height:4.6cqh; border-radius:50%;
+    background: rgba(10,12,16,.55); border:1px solid var(--line);
+    color: var(--paper); display:grid; place-items:center;
+    backdrop-filter: blur(6px); transition: all .25s ease;
+  }
+  .arrows svg { width:2cqh; height:2cqh; }
+  .arrows button:hover:not(:disabled){ background: var(--acid); color:#0a0c10; border-color:var(--acid); }
+  .arrows button:disabled { opacity:.3; cursor:default; }
+
+  .dots { position:absolute; bottom:4.4cqh; left:50%; transform:translateX(-50%); display:flex; gap:1.1cqw; pointer-events:auto; }
+  .dots i { width:1cqh; height:1cqh; border-radius:50%; background:var(--muted-2); opacity:.5; cursor:pointer; transition:all .25s ease; }
+  .dots i.on { background:var(--acid); opacity:1; width:3cqh; border-radius:999px; }
+
+  .hint { position:absolute; bottom:3.6cqh; left:3.4cqw; font-size:1.3cqh; color:var(--muted-2); font-weight:500; letter-spacing:.04em; }
+
+  @media print { .ui { display:none; } }
+</style>
+</head>
+<body>
+  <div class="stage">
+
+    <!-- ============ SLIDE 1 — COVER ============ -->
+    <section class="slide cover is-active" data-i="0">
+      <div class="inner">
+        <div class="top">
+          <div class="kicker"><span class="dot"></span>AX Transformation Proposal · AX 혁신 제안서</div>
+          <div class="badge">Confidential<br/>2026</div>
+        </div>
+        <div>
+          <h1>AI-Powered <b class="acidtext">Gas Utility</b><br/>Operations</h1>
+          <div class="ko-sub">가스 배급사를 위한 인공지능 운영 혁신</div>
+          <div class="presenter">Presented by an <span>AX Engineer</span> · Former Seoul City Gas · GasApp Creator</div>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="big warn">80%</div><div class="lab"><b>반복 문의 비율</b>of inbound calls are repetitive</div></div>
+          <div class="stat"><div class="big warn">₩12B+</div><div class="lab"><b>콜센터 연간 인건비</b>annual call-center labor cost</div></div>
+          <div class="stat"><div class="big warn">500+</div><div class="lab"><b>매일 수동 배차</b>technicians dispatched manually / day</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 2 — PROBLEM ============ -->
+    <section class="slide" data-i="1">
+      <div class="inner">
+        <div class="head">
+          <div>
+            <div class="kicker"><span class="dot"></span>The Problem · 문제점</div>
+            <div class="s-title">Four Costly <span class="acidtext">Inefficiencies</span></div>
+          </div>
+          <div class="right">Gas utilities are falling behind. <b>네 가지 고비용 비효율</b>이 매일 수익과 신뢰를 새게 한다.</div>
+        </div>
+        <div class="grid4">
+          <div class="pcard">
+            <div class="pn">01</div>
+            <h3>High Call Center Costs</h3>
+            <div class="en">과도한 콜센터 비용</div>
+            <p><b>100–300 agents</b> handle billing & move-in/out inquiries AI could resolve. 반복 문의에 수백 명의 상담원.</p>
+          </div>
+          <div class="pcard">
+            <div class="pn">02</div>
+            <h3>Field Dispatch Inefficiency</h3>
+            <div class="en">현장 배차 비효율</div>
+            <p><b>500+ manual dispatches/day</b>, no real-time location, habit-based routing. 경험 기반 수동 배차.</p>
+          </div>
+          <div class="pcard">
+            <div class="pn">03</div>
+            <h3>Billing & Revenue Leakage</h3>
+            <div class="en">청구 오류 · 수익 누수</div>
+            <p>Move-out delays, meter misreads & manual entry cause <b>silent revenue drain</b>. 청구 지연·오독.</p>
+          </div>
+          <div class="pcard">
+            <div class="pn">04</div>
+            <h3>Reactive Safety</h3>
+            <div class="en">사후 대응식 안전</div>
+            <p>Leak detection <b>waits for a customer call</b>. IoT + AI shifts response from hours to minutes. 사전 감지 전환.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 3 — SOLUTION ============ -->
+    <section class="slide" data-i="2">
+      <div class="inner">
+        <div class="head">
+          <div>
+            <div class="kicker"><span class="dot"></span>The Solution · 솔루션</div>
+            <div class="s-title">Introducing <span class="acidtext">GasApp</span></div>
+          </div>
+          <div class="right">가스 사용자와 유틸리티를 잇는 <b>스마트 플랫폼</b>. 이미 작동 중인 실제 제품.</div>
+        </div>
+        <div class="grid3">
+          <div class="pillar">
+            <div class="en">Automated Calls · 자동 통화</div>
+            <h3>AI Voice Bot</h3>
+            <p>Resolves billing, move-in/out and scheduling <b>without human agents</b>. 청구·이사·예약을 자동 응대해 <b>통화량 60–70% 감소</b>.</p>
+          </div>
+          <div class="pillar">
+            <div class="en">Smart Billing · 스마트 청구</div>
+            <h3>Real-time + ERP</h3>
+            <p>Billing automation synced with ERP; <b>anomaly detection</b> stops leakage. ERP 연동·이상 감지로 <b>수익 누수 방지</b>.</p>
+          </div>
+          <div class="pillar">
+            <div class="en">Discount Engine · 할인 엔진</div>
+            <h3>Behavior-based</h3>
+            <p>Targeted offers <b>boost loyalty and cut churn</b> without blanket promotions. 행동 기반 할인으로 <b>이탈 방지</b>.</p>
+          </div>
+        </div>
+        <div class="strip">
+          <span class="tag">The Insider Advantage</span>
+          <span>Built by a <b>former Seoul City Gas</b> insider — GasApp is <b>live, not a concept</b>. AI 엔지니어링 + 유틸리티 도메인의 희귀한 조합.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 4 — AX PRINCIPLES ============ -->
+    <section class="slide" data-i="3">
+      <div class="inner">
+        <div class="head">
+          <div>
+            <div class="kicker"><span class="dot"></span>The Method · AX 방법론</div>
+            <div class="s-title"><span class="acidtext">AX</span> 5원칙</div>
+          </div>
+          <div class="right">전 직원이 <b>같은 날 출발</b>해 5주 만에 끝내는 <b>저비용 사내 AX</b> 운영 원칙.</div>
+        </div>
+        <div class="plist">
+          <div class="prow">
+            <div class="num">01</div>
+            <div class="pn2"><div class="en">Top-down AX</div><div class="kr">톱다운 동시 착수</div></div>
+            <div class="pd"><b>Day 1에 모든 인터뷰 완료</b> 후 AX 과제 도출. 전 직원이 <span class="hl">같은 출발선에서 동시에</span> 참여.</div>
+          </div>
+          <div class="prow">
+            <div class="num">02</div>
+            <div class="pn2"><div class="en">5-Week Sprint</div><div class="kr">5주 내 완성</div></div>
+            <div class="pd">착수부터 사내 엔지니어 양성까지 <span class="hl">단 5주</span>.
+              <div class="phases">
+                <div class="phase"><em>1주</em>과제 도출</div>
+                <div class="phase"><em>2주</em>팀별 회의·프로토타입</div>
+                <div class="phase"><em>3–4주</em>개발·현장 적용</div>
+                <div class="phase"><em>5주</em>인수인계·엔지니어 양성</div>
+              </div>
+            </div>
+          </div>
+          <div class="prow">
+            <div class="num">03</div>
+            <div class="pn2"><div class="en">Zero / Low Cost</div><div class="kr">저비용 · 무비용</div></div>
+            <div class="pd"><b>소프트웨어·하드웨어 도입을 최대한 지양</b>. 작은 회사엔 AX 예산이 없다 — <span class="hl">방식으로 푼다</span>.</div>
+          </div>
+          <div class="prow">
+            <div class="num">04</div>
+            <div class="pn2"><div class="en">Fool-proof Playbook</div><div class="kr">풀프루프 플레이북</div></div>
+            <div class="pd">사내 양성 시 <b>step-by-step 플레이북</b> 제작. <span class="hl">기술 배경이 없어도</span> 그대로 따라오게.</div>
+          </div>
+          <div class="prow">
+            <div class="num">05</div>
+            <div class="pn2"><div class="en">Central Follow-up</div><div class="kr">중앙관제 추적</div></div>
+            <div class="pd">커밋 지속·<b>신규 모델 도입·토큰 사용량</b> 지표를 각 프로그램에 심어 <span class="hl">지속적으로 독려</span>.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 5 — ROADMAP + BUSINESS CASE ============ -->
+    <section class="slide" data-i="4">
+      <div class="inner">
+        <div class="head">
+          <div>
+            <div class="kicker"><span class="dot"></span>Roadmap & Business Case · 로드맵</div>
+            <div class="s-title">Phased <span class="acidtext">AX</span> Implementation</div>
+          </div>
+          <div class="right">단계별 도입으로 <b>매 분기 측정 가능한 성과</b>. 18개월 회수, 2년차 ROI 3.7배.</div>
+        </div>
+        <div class="timeline">
+          <div class="tphase">
+            <div class="when">Month 1–2</div>
+            <div class="step"><div class="idx">01</div><div><h3>Quick Wins</h3><div class="ko">빠른 성과</div></div></div>
+            <ul><li>Deploy GasApp</li><li>AI call bot live</li><li>Billing automation</li></ul>
+          </div>
+          <div class="tphase">
+            <div class="when">Month 3–5</div>
+            <div class="step"><div class="idx">02</div><div><h3>Core Ops</h3><div class="ko">핵심 운영</div></div></div>
+            <ul><li>AI dispatch system</li><li>ERP integration</li><li>Field mobile app</li></ul>
+          </div>
+          <div class="tphase">
+            <div class="when">Month 6–9</div>
+            <div class="step"><div class="idx">03</div><div><h3>Intelligence</h3><div class="ko">지능화</div></div></div>
+            <ul><li>IoT leak detection</li><li>Predictive maintenance</li><li>Analytics dashboard</li></ul>
+          </div>
+          <div class="tphase">
+            <div class="when">Month 10–12</div>
+            <div class="step"><div class="idx">04</div><div><h3>Scale & Optimize</h3><div class="ko">확장 최적화</div></div></div>
+            <ul><li>Full automation</li><li>ROI reporting</li><li>Continuous training</li></ul>
+          </div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="big acidtext">18 mo</div><div class="lab"><b>투자 회수 기간</b>Payback period</div></div>
+          <div class="kpi"><div class="big acidtext">3.7×</div><div class="lab"><b>2년차 ROI</b>Return at year 2</div></div>
+          <div class="kpi"><div class="big acidtext">65%</div><div class="lab"><b>통화 자동화율</b>Call automation rate</div></div>
+          <div class="kpi"><div class="big acidtext">28%</div><div class="lab"><b>현장 운영비 절감</b>Field ops cost cut</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SLIDE 6 — ENGAGEMENT + CTA ============ -->
+    <section class="slide" data-i="5">
+      <div class="inner">
+        <div class="head">
+          <div>
+            <div class="kicker"><span class="dot"></span>Engagement · 계약 모델</div>
+            <div class="s-title">How We <span class="acidtext">Work Together</span></div>
+          </div>
+          <div class="right">규모에 맞춰 <b>단계별 성과</b>로 진행. 장기 컨설팅 없이.</div>
+        </div>
+        <div class="pkgs">
+          <div class="pkg">
+            <div class="en">AX Engineer</div>
+            <div class="ko">AX 전문가 고용 · 컨설팅</div>
+            <ul><li>Embedded in your team · 팀 내 상주</li><li>Process audit & redesign · 프로세스 재설계</li><li>AI integration w/ SAP·Oracle</li><li>Staff training & handover · 교육·인수인계</li></ul>
+          </div>
+          <div class="pkg">
+            <div class="en">GasApp License</div>
+            <div class="ko">GasApp 라이선스 · 플랫폼</div>
+            <ul><li>SaaS subscription · 구독형</li><li>Automated call + billing · 자동화</li><li>White-labeled · 자체 브랜드</li><li>Ongoing updates & support · 지속 지원</li></ul>
+          </div>
+          <div class="pkg reco">
+            <div class="rib">Recommended</div>
+            <div class="en">Full Package</div>
+            <div class="ko">통합 패키지 · 권장</div>
+            <ul><li>Consulting + GasApp bundle</li><li>Best ROI, fastest delivery · 최단 납기</li><li>Single point of accountability</li><li>Customized for your scale · 맞춤</li></ul>
+          </div>
+        </div>
+        <div class="cta">
+          <div class="big">Let's Transform Your Gas Operation<span class="ko">다음 단계 — 운영 현황 파악을 위한 30분 디스커버리 콜</span></div>
+          <div class="checks"><b>✓</b> No commitment required<br/><b>✓</b> We assess your SAP / ERP setup<br/><b>✓</b> Free AX opportunity audit</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ NAV UI ============ -->
+    <div class="ui">
+      <button class="home" id="homeBtn" aria-label="Home — 표지로" title="Home (표지로)" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h5v-5h4v5h5v-9"/></svg>
+      </button>
+      <div class="counter"><b id="cur">01</b> / <span id="tot">06</span></div>
+      <div class="arrows">
+        <button id="prev" aria-label="이전" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button id="next" aria-label="다음"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+      <div class="dots" id="dots"></div>
+      <div class="hint">← → 또는 스페이스로 이동 · F 전체화면</div>
+    </div>
+
+  </div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let i = 0;
+  const curEl = document.getElementById('cur');
+  const totEl = document.getElementById('tot');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+  const homeBtn = document.getElementById('homeBtn');
+  const dotsEl = document.getElementById('dots');
+
+  totEl.textContent = String(total).padStart(2,'0');
+  slides.forEach((_, n) => {
+    const d = document.createElement('i');
+    d.addEventListener('click', () => go(n));
+    dotsEl.appendChild(d);
+  });
+  const dots = Array.from(dotsEl.children);
+
+  function go(n){
+    i = Math.max(0, Math.min(total - 1, n));
+    slides.forEach((s, n2) => s.classList.toggle('is-active', n2 === i));
+    dots.forEach((d, n2) => d.classList.toggle('on', n2 === i));
+    curEl.textContent = String(i + 1).padStart(2,'0');
+    prevBtn.disabled = i === 0;
+    nextBtn.disabled = i === total - 1;
+    homeBtn.hidden = i === 0;
+  }
+  const next = () => go(i + 1);
+  const prev = () => go(i - 1);
+
+  nextBtn.addEventListener('click', next);
+  prevBtn.addEventListener('click', prev);
+  homeBtn.addEventListener('click', () => go(0));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') { go(0); }
+    else if (e.key === 'End') { go(total - 1); }
+    else if (e.key === 'f' || e.key === 'F') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+      else document.exitFullscreen?.();
+    }
+  });
+
+  go(0);
+</script>
+</body>
+</html>

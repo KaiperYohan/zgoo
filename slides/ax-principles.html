@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AX 5원칙</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #0a0c10;
+    --ink-2: #11141b;
+    --paper: #f4f1e9;
+    --muted: #8a93a6;
+    --muted-2: #5d6477;
+    --line: rgba(244, 241, 233, 0.10);
+    --acid: #cdfa50;
+    --acid-dim: #9fc23a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    background: #05060a;
+    font-family: 'Pretendard', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+
+  /* ---------- Slide frame ---------- */
+  .stage {
+    width: min(97vw, 174vh);
+    aspect-ratio: 16 / 9;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    container-type: size;
+    background:
+      radial-gradient(120% 90% at 88% -10%, rgba(205, 250, 80, 0.10), transparent 45%),
+      radial-gradient(90% 80% at -10% 110%, rgba(80, 130, 250, 0.10), transparent 50%),
+      linear-gradient(160deg, var(--ink-2) 0%, var(--ink) 60%, #07090d 100%);
+    color: var(--paper);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    box-shadow: 0 40px 120px -30px rgba(0,0,0,0.8);
+  }
+
+  /* grain overlay */
+  .slide::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* faint vertical hairline grid */
+  .slide::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 9.09cqw 100%;
+    opacity: 0.5;
+    mask-image: linear-gradient(180deg, transparent, #000 18%, #000 88%, transparent);
+  }
+
+  .inner {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    padding: 5.4cqh 5cqw 4.6cqh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-bottom: 3.2cqh;
+    border-bottom: 1px solid var(--line);
+  }
+  .kicker {
+    display: flex;
+    align-items: center;
+    gap: 1.1cqw;
+    font-size: 1.45cqh;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .kicker .dot {
+    width: 0.9cqh; height: 0.9cqh;
+    background: var(--acid);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--acid);
+  }
+  .title-wrap { margin-top: 2.1cqh; display: flex; align-items: baseline; gap: 1.6cqw; }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 9.6cqh;
+    line-height: 0.9;
+    letter-spacing: -0.01em;
+  }
+  h1 .ax {
+    font-style: italic;
+    font-weight: 500;
+    background: linear-gradient(180deg, var(--paper), var(--acid));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  h1 .ko { font-family: 'Pretendard'; font-weight: 800; letter-spacing: -0.03em; }
+  .tagline {
+    text-align: right;
+    color: var(--muted);
+    font-size: 1.85cqh;
+    line-height: 1.5;
+    font-weight: 500;
+    max-width: 34cqw;
+  }
+  .tagline b { color: var(--paper); font-weight: 700; }
+
+  /* ---------- Principles list ---------- */
+  .list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-top: 1.4cqh;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 7.5cqw 22cqw 1fr;
+    align-items: center;
+    gap: 2.4cqw;
+    padding: 1.75cqh 0.6cqw;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    transition: background 0.35s ease;
+  }
+  .row:last-child { border-bottom: none; }
+  .row::before {
+    content: "";
+    position: absolute;
+    left: -5cqw; top: 0; bottom: 0;
+    width: 0.32cqw;
+    background: var(--acid);
+    transform: scaleY(0);
+    transform-origin: center;
+    transition: transform 0.4s cubic-bezier(.2,.8,.2,1);
+  }
+  .row:hover { background: rgba(205, 250, 80, 0.04); }
+  .row:hover::before { transform: scaleY(1); }
+
+  .num {
+    font-family: 'Fraunces', serif;
+    font-size: 5.6cqh;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted-2);
+    line-height: 1;
+    transition: color 0.35s ease;
+  }
+  .row:hover .num { color: var(--acid); }
+
+  .pname { display: flex; flex-direction: column; gap: 0.5cqh; }
+  .pname .en {
+    font-size: 1.35cqh;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--acid-dim);
+    font-weight: 700;
+  }
+  .pname .kr {
+    font-size: 2.95cqh;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  .pdesc {
+    font-size: 1.95cqh;
+    line-height: 1.5;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .pdesc b { color: var(--paper); font-weight: 600; }
+  .pdesc .hl {
+    color: var(--acid);
+    font-weight: 600;
+  }
+
+  /* timeline chip strip for row 02 */
+  .phases { display: flex; gap: 0.7cqw; margin-top: 1cqh; flex-wrap: wrap; }
+  .phase {
+    font-size: 1.45cqh;
+    font-weight: 600;
+    color: var(--paper);
+    background: rgba(244,241,233,0.05);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.55cqh 1.1cqw;
+    letter-spacing: -0.01em;
+  }
+  .phase span { color: var(--acid-dim); font-family: 'Fraunces', serif; font-style: italic; margin-right: 0.4cqw; }
+
+  /* ---------- Footer ---------- */
+  footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 2.6cqh;
+    font-size: 1.4cqh;
+    color: var(--muted-2);
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+  footer .mark { color: var(--muted); }
+  footer .mark b { color: var(--acid-dim); font-weight: 700; }
+
+  /* ---------- Entrance animation ---------- */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(2.4cqh); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .anim { opacity: 0; animation: rise 0.85s cubic-bezier(.2,.75,.2,1) forwards; }
+  .d0 { animation-delay: 0.05s; }
+  .d1 { animation-delay: 0.18s; }
+  .d2 { animation-delay: 0.30s; }
+  .d3 { animation-delay: 0.42s; }
+  .d4 { animation-delay: 0.54s; }
+  .d5 { animation-delay: 0.66s; }
+  .d6 { animation-delay: 0.78s; }
+  .d7 { animation-delay: 0.90s; }
+</style>
+</head>
+<body>
+  <div class="stage">
+  <div class="slide">
+    <div class="inner">
+
+      <header>
+        <div>
+          <div class="kicker anim d0"><span class="dot"></span>AI Transformation · 사내 AX 방법론</div>
+          <div class="title-wrap anim d1">
+            <h1><span class="ax">AX</span> <span class="ko">5원칙</span></h1>
+          </div>
+        </div>
+        <p class="tagline anim d1">전 직원이 <b>같은 날 출발</b>해<br />5주 만에 끝내는<br /><b>저비용 사내 AX</b> 운영 원칙</p>
+      </header>
+
+      <div class="list">
+
+        <div class="row anim d2">
+          <div class="num">01</div>
+          <div class="pname">
+            <div class="en">Top-down AX</div>
+            <div class="kr">톱다운 동시 착수</div>
+          </div>
+          <div class="pdesc"><b>Day 1에 모든 인터뷰를 완료</b>하고 AX 과제를 도출한다. 전 직원이 <span class="hl">같은 출발선에서 동시에</span> 참여한다.</div>
+        </div>
+
+        <div class="row anim d3">
+          <div class="num">02</div>
+          <div class="pname">
+            <div class="en">5-Week Sprint</div>
+            <div class="kr">5주 내 완성</div>
+          </div>
+          <div class="pdesc">
+            착수부터 사내 엔지니어 양성까지 <span class="hl">단 5주</span>.
+            <div class="phases">
+              <div class="phase"><span>1주</span>과제 도출</div>
+              <div class="phase"><span>2주</span>팀별 회의·프로토타입</div>
+              <div class="phase"><span>3–4주</span>개발·현장 적용</div>
+              <div class="phase"><span>5주</span>인수인계·엔지니어 양성</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row anim d4">
+          <div class="num">03</div>
+          <div class="pname">
+            <div class="en">Zero / Low Cost</div>
+            <div class="kr">저비용 · 무비용</div>
+          </div>
+          <div class="pdesc"><b>소프트웨어 도입·하드웨어 설치를 최대한 지양</b>한다. 작은 회사에는 AX에 쓸 <span class="hl">예산이 없다</span> — 방식으로 푼다.</div>
+        </div>
+
+        <div class="row anim d5">
+          <div class="num">04</div>
+          <div class="pname">
+            <div class="en">Fool-proof Playbook</div>
+            <div class="kr">풀프루프 플레이북</div>
+          </div>
+          <div class="pdesc">사내 인원 양성 시 <b>step-by-step 플레이북</b>을 만든다. <span class="hl">기술 배경이 없어도</span> 그대로 따라올 수 있게 배려한다.</div>
+        </div>
+
+        <div class="row anim d6">
+          <div class="num">05</div>
+          <div class="pname">
+            <div class="en">Central Follow-up</div>
+            <div class="kr">중앙관제 추적</div>
+          </div>
+          <div class="pdesc">커밋 지속 여부·<b>신규 AI 모델 도입·토큰 사용량</b> 등 지표를 각 프로그램에 심어, <span class="hl">지속적으로 사내 AX를 독려</span>한다.</div>
+        </div>
+
+      </div>
+
+      <footer class="anim d7">
+        <div class="mark"><b>AX</b> Operating Principles</div>
+        <div>전직원 동시 참여 · 5주 완성 · 저비용 · 자립 운영</div>
+      </footer>
+
+    </div>
+  </div>
+  </div>
+</body>
+</html>
